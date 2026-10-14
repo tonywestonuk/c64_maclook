@@ -1,0 +1,7 @@
+450 mouse 150 100
+470 shot build/lg_1.bmp
+480 mouse 12 5
+492 down
+510 shot build/lg_2.bmp
+511 mouse 150 150
+520 up

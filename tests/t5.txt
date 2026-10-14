@@ -1,0 +1,2 @@
+300 mouse 100 100
+330 shot build/t5_a.bmp

@@ -1,0 +1,32 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+600 shot build/k_1.bmp
+610 mouse 55 140
+622 down
+626 up
+638 down
+642 up
+680 shot build/k_2.bmp
+900 shot build/k_3.bmp
+910 mouse 150 150
+930 down
+934 up
+960 mouse 120 150
+990 mouse 180 150
+1010 shot build/k_4.bmp
+1100 mouse 140 150
+1150 shot build/k_5.bmp
+1160 mouse 140 5
+1172 down
+1200 mouse 140 90
+1260 shot build/k_6.bmp
+1261 up
+1300 keydown 226
+1302 keydown Q
+1305 keyup Q
+1306 keyup 226
+1340 shot build/k_7.bmp
+1600 shot build/k_8.bmp

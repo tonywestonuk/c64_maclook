@@ -1,0 +1,29 @@
+450 mouse 14 5
+462 down
+482 mouse 14 44
+502 up
+582 mouse 228 127
+594 down
+599 up
+619 mouse 249 127
+631 down
+636 up
+656 mouse 291 135
+668 down
+673 up
+693 mouse 270 127
+705 down
+710 up
+730 mouse 270 79
+742 down
+747 up
+777 type 7/4
+799 mouse 270 79
+811 down
+816 up
+846 mouse 14 5
+858 down
+878 mouse 14 77
+898 up
+998 type Loaded from the 1541!
+1122 shot build/f_1.bmp

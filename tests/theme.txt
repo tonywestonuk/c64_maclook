@@ -1,0 +1,18 @@
+110 shot build/th_1.bmp
+200 shot build/th_2.bmp
+300 mouse 14 5
+306 down
+330 shot build/th_3.bmp
+331 mouse 200 120
+340 up
+360 mouse 292 30
+366 down
+370 up
+382 down
+386 up
+470 shot build/th_4.bmp
+480 mouse 14 5
+486 down
+500 mouse 30 17
+520 up
+600 shot build/th_5.bmp

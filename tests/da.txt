@@ -1,0 +1,25 @@
+300 mouse 14 5
+306 down
+326 mouse 14 33
+346 up
+416 mouse 14 5
+422 down
+442 mouse 14 55
+462 up
+562 shot build/d_1.bmp
+563 mouse 14 5
+569 down
+589 mouse 14 88
+609 up
+709 mouse 14 5
+715 down
+735 mouse 14 77
+755 up
+835 type Hello from the C64
+947 shot build/d_2.bmp
+948 mouse 14 5
+954 down
+974 mouse 14 66
+994 up
+1074 type mac
+1116 shot build/d_3.bmp

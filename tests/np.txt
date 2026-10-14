@@ -1,0 +1,19 @@
+300 mouse 14 5
+306 down
+326 mouse 14 77
+346 up
+446 shot build/n_1.bmp
+447 type The quick brown fox jumps
+577 shot build/n_2.bmp
+578 type , over the lazy dog. Hello World 123
+762 shot build/n_3.bmp
+763 keydown Backspace
+766 keyup Backspace
+774 keydown Backspace
+777 keyup Backspace
+785 keydown Backspace
+788 keyup Backspace
+796 keydown Return
+799 keyup Return
+807 type Line two
+879 shot build/n_4.bmp

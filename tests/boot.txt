@@ -1,0 +1,4 @@
+150 shot build/t_boot1.bmp
+260 shot build/t_boot2.bmp
+420 mouse 150 100
+460 shot build/t_desk.bmp

@@ -1,0 +1,14 @@
+300 mouse 292 30
+310 shot build/t2_a.bmp
+320 down
+323 up
+328 down
+331 up
+420 shot build/t2_b.bmp
+430 mouse 30 5
+440 down
+450 mouse 30 40
+470 shot build/t2_c.bmp
+475 mouse 60 5
+490 shot build/t2_d.bmp
+495 up

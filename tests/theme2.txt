@@ -1,0 +1,8 @@
+125 shot build/th_6.bmp
+300 mouse 14 5
+306 down
+320 mouse 30 17
+340 up
+350 dump build/a1.bin
+420 shot build/th_7.bmp
+420 dump build/a2.bin

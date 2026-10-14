@@ -1,0 +1,5 @@
+450 mouse 142 5
+462 down
+482 mouse 142 82
+502 up
+580 shot build/z_1.bmp

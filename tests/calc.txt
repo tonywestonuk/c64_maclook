@@ -1,0 +1,23 @@
+300 mouse 14 5
+306 down
+326 mouse 14 44
+346 up
+426 shot build/c_1.bmp
+427 mouse 224 127
+433 down
+438 up
+458 mouse 245 127
+464 down
+469 up
+489 mouse 287 135
+495 down
+500 up
+520 mouse 266 127
+526 down
+531 up
+551 mouse 266 79
+557 down
+562 up
+592 shot build/c_2.bmp
+593 type 7/4=
+639 shot build/c_3.bmp

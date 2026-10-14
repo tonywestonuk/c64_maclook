@@ -1,0 +1,4 @@
+400 keydown Left Alt
+405 dump build/m1.bin
+406 keydown Q
+410 dump build/m2.bin

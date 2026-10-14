@@ -1,0 +1,6 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+620 shot build/pub_smoke.bmp

@@ -1,0 +1,6 @@
+100 shot build/b_1.bmp
+200 shot build/b_2.bmp
+300 shot build/b_3.bmp
+400 shot build/b_4.bmp
+500 shot build/b_5.bmp
+500 dump build/b5.bin

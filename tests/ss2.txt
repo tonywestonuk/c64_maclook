@@ -1,0 +1,50 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+600 mouse 111 141
+612 down
+616 up
+628 down
+632 up
+900 mouse 83 85
+912 down
+916 up
+940 type 450|
+1100 shot build/sx_1.bmp
+1110 mouse 283 85
+1122 down
+1126 up
+1140 type =E4*12|
+1260 type =(B4+C4)/0|
+1400 type =MAX(B4:F4)|
+1550 shot build/sx_2.bmp
+1560 keydown Down
+1563 keyup Down
+1570 keydown Down
+1573 keyup Down
+1580 keydown Down
+1583 keyup Down
+1590 keydown Down
+1593 keyup Down
+1600 keydown Down
+1603 keyup Down
+1610 keydown Down
+1613 keyup Down
+1620 keydown Down
+1623 keyup Down
+1630 keydown Down
+1633 keyup Down
+1640 keydown Down
+1643 keyup Down
+1650 keydown Down
+1653 keyup Down
+1660 keydown Down
+1663 keyup Down
+1670 keydown Down
+1673 keyup Down
+1680 keydown Down
+1683 keyup Down
+1720 shot build/sx_3.bmp
+1900 shot build/sx_4.bmp

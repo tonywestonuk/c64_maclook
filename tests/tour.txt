@@ -1,0 +1,17 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+620 shot build/tour_desktop.bmp
+640 mouse 14 5
+652 down
+672 mouse 30 44
+700 shot build/tour_menu.bmp
+705 up
+780 mouse 14 5
+792 down
+812 mouse 30 77
+832 up
+900 type Hello from the Commodore 64!
+1040 shot build/tour_das.bmp

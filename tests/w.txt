@@ -1,0 +1,4 @@
+400 dump build/w1.bin
+440 dump build/w2.bin
+480 dump build/w3.bin
+560 dump build/w4.bin

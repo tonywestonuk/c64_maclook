@@ -1,0 +1,13 @@
+300 mouse 292 30
+320 down
+324 up
+340 down
+344 up
+440 shot build/t6_a.bmp
+450 mouse 140 36
+460 down
+470 mouse 120 60
+480 mouse 100 80
+500 shot build/t6_b.bmp
+501 up
+600 shot build/t6_c.bmp

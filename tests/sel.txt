@@ -1,0 +1,9 @@
+450 mouse 292 30
+456 down
+461 up
+480 shot build/q_1.bmp
+490 shot build/q_2.bmp
+500 shot build/q_3.bmp
+520 shot build/q_4.bmp
+540 shot build/q_5.bmp
+580 shot build/q_6.bmp

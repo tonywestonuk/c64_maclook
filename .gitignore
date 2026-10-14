@@ -1,0 +1,33 @@
+# Build output and test screenshots
+build/
+.DS_Store
+
+# Frodo: files made by autogen.sh / configure / make
+# (upstream's frodo4/.gitignore already covers objects and the binaries)
+frodo4/autom4te.cache/
+frodo4/aclocal.m4
+frodo4/configure
+frodo4/configure~
+frodo4/config.log
+frodo4/config.status
+frodo4/config.h
+frodo4/config.h.in
+frodo4/config.h.in~
+frodo4/config.guess
+frodo4/config.sub
+frodo4/compile
+frodo4/depcomp
+frodo4/install-sh
+frodo4/missing
+frodo4/stamp-h1
+frodo4/build.log
+frodo4/Makefile
+frodo4/Makefile.in
+frodo4/src/Makefile
+frodo4/src/Makefile.in
+frodo4/src/.deps/
+frodo4/docs/Makefile
+frodo4/docs/Makefile.in
+frodo4/docs/*.info
+frodo4/docs/stamp-vti
+frodo4/docs/version.texi

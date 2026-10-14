@@ -1,0 +1,9 @@
+300 mouse 14 5
+306 down
+326 mouse 14 33
+346 up
+350 dump build/k1.bin
+360 dump build/k2.bin
+375 dump build/k3.bin
+390 dump build/k4.bin
+420 dump build/k5.bin

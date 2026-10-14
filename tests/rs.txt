@@ -1,0 +1,16 @@
+450 mouse 142 5
+462 down
+482 mouse 142 71
+502 up
+562 shot build/r_1.bmp
+623 shot build/r_2.bmp
+824 shot build/r_3.bmp
+825 mouse 142 5
+837 down
+857 mouse 142 82
+877 up
+977 shot build/r_4.bmp
+978 mouse 230 112
+990 down
+995 up
+1315 shot build/r_5.bmp

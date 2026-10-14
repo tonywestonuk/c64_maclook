@@ -1,0 +1,6 @@
+300 mouse 292 30
+320 down
+324 up
+340 down
+344 up
+420 shot build/t4_a.bmp

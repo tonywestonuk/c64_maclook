@@ -1,0 +1,6 @@
+450 mouse 14 5
+456 down
+476 mouse 14 44
+496 up
+596 dump build/x1.bin
+597 shot build/x_1.bmp

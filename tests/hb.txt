@@ -1,0 +1,4 @@
+40 shot build/hb_1.bmp
+55 shot build/hb_2.bmp
+70 shot build/hb_3.bmp
+85 shot build/hb_4.bmp
