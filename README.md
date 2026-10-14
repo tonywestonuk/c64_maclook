@@ -4,14 +4,18 @@ A Macintosh System 4 / Finder 5 style desktop for the **Commodore 64**, running
 in 320×200 two-colour hires mode on a real 1 MHz 6510 with 64K of RAM.
 Everything is written from scratch in 6502 assembly.
 
-It has a menu bar with pull-down menus, overlapping windows, a Finder with icons,
-and real applications loaded from a 1541 disk that replace the Finder while
-they run, the way the Mac worked before MultiFinder. Like the Mac's Toolbox,
-the System is used only through a published API: a jump table at a fixed
-address ([docs/api.md](docs/api.md)), so applications don't need rebuilding
-when the System changes. It has since been given a Commodore theme: a C= logo
-in place of the Apple, a happy C64 at start-up, a 1541 floppy icon, and disk
-space counted in blocks.
+It has a menu bar with pull-down menus, overlapping windows, a Finder with
+icons, and real applications that replace the Finder while they run, the way
+the Mac worked before MultiFinder. Its files live on a network share, reached
+through a [WiC64](https://wic64.net/web/) (an ESP32 Wi-Fi adapter on the user
+port): a one-block BOOT program loads the System from the share, which then
+loads everything else from there, about 100 times faster than a 1541.
+
+Like the Mac's Toolbox, the System is used only through a published API: a
+jump table at a fixed address ([docs/api.md](docs/api.md)), so applications
+don't need rebuilding when the System changes. Its core takes 16K; the rest of
+it is loaded from the share into an 8K block when first needed. It has a
+Commodore theme: a C= logo in place of the Apple, a happy C64 at start-up.
 
 ![Desktop](docs/screenshots/desktop.png)
 
@@ -23,23 +27,26 @@ space counted in blocks.
 
 ## What's in it
 
-- **SYSTEM** (the boot file, 21K): a QuickDraw-style graphics library
+- **BOOT** (one block, on a floppy or a tape): loads the System from the
+  share and starts it.
+- **System** (a 14K core, and overlays): a QuickDraw-style graphics library
   (rectangles, lines, ovals, circles and round rects in patterns and copy,
   OR, XOR or erase modes, clipping, proportional Chicago and Geneva style
   fonts, masked icons), window manager, menu manager, alerts and dialogs,
-  event handling with a 1351 mouse or joystick, and a loader that brings
-  applications in from drive 8. It boots, then loads the Finder.
+  event handling with a 1351 mouse or joystick, the WiC64 driver and the
+  file calls (list, read, write, delete, rename, copy, new folder). It
+  boots, then loads the Finder.
 - **Desk accessories** (Calculator, Note Pad, Puzzle, Alarm Clock, Key Caps,
   Control Panel) are out of the System for now. Their source is in
   `src/da_*.asm`; they'll come back as separate files loaded from disk.
-- **FINDER**: disk and folder windows that scroll both ways, dragging icons
+- **Finder**: disk and folder windows that scroll both ways, dragging icons
   between folders and to the Trash, Get Info, New Folder, Duplicate, Put Back,
   Clean Up, renaming icons by typing, zoom-rect animations, Restart and Shut
   Down.
-- **BRICKLES**: a Breakout game. The ball and paddle are hardware sprites.
-- **SHAPES**: a QuickDraw demonstration: lines, ovals, circles, round
+- **Brickles**: a Breakout game. The ball and paddle are hardware sprites.
+- **Shapes**: a QuickDraw demonstration: lines, ovals, circles, round
   rects and random shapes, in a choice of patterns or inverting.
-- **SHEET**: a small spreadsheet with formulas (`+ - * / ( )`, cell
+- **Spreadsheet**: a small spreadsheet with formulas (`+ - * / ( )`, cell
   references, `SUM AVG MIN MAX COUNT` over ranges), automatic recalculation,
   number formats, and Cut/Copy/Paste through the shared Clipboard.
 
@@ -50,16 +57,18 @@ brew install acme python autoconf automake pkg-config sdl2 gtk+3
 brew install imagemagick      # optional: only the screenshot tests need it
 
 cd frodo4 && ./autogen.sh && make && cd ..   # the patched emulator
-./build.sh                                    # assemble everything -> desktop64.d64
+./build.sh                                    # assemble everything
 ./run.sh                                      # boot it
 ```
 
-`run.sh` builds Frodo itself if it hasn't been built yet. A ready-made
-`desktop64.d64` is included, so `./build.sh` is only needed after changing
-the source.
+`run.sh` builds Frodo itself if it hasn't been built yet. The emulated WiC64
+offers the folder `share/` as the network share: it holds the System Folder
+and the applications, ready-made, so `./build.sh` is only needed after
+changing the source. `desktop64.d64` holds only BOOT.
 
-`./run.sh` uses Frodo's fast disk mode. `./run.sh real` uses full,
-cycle-exact 1541 emulation: authentic, but booting takes about a minute.
+The share is an ordinary folder: copy files in on the Mac and they are there
+on the C64. To use a real network share in the emulator, mount it in macOS
+and point Frodo at it (`WiC64Share=/Volumes/...` in `run.sh`).
 
 ### Using it
 
@@ -74,25 +83,55 @@ cycle-exact 1541 emulation: authentic, but booting takes about a minute.
 - Double-click **Brickles**, **Spreadsheet** or **Shapes** in the System Disk
   window to launch them. Quit brings the Finder back.
 
+### On a real C64
+
+Put BOOT on a floppy (or a tape), `LOAD` it and `RUN` it. The WiC64 needs the
+file service (`docs/fileservice.md`); its ESP32 firmware, with SMB, is still
+to come, so for now this runs in the emulator.
+
 ## How it fits together
 
 The 64K are eight 8K blocks:
 
 ```
-block 0-2  $0000-$5fff  zero page, stack, KERNAL variables, BASIC's zero page
-                        copy ($0400), the Clipboard ($0500), then SYSTEM from
-                        $0801: jump table ($0810), public data, code
-block 3    $6000-$7fff  the running application's core (FINDER, BRICKLES, SHEET)
+block 0-1  $0000-$3fff  zero page, stack, BASIC's zero page copy ($0400), the
+                        Clipboard ($0500), the file service's buffer ($0600),
+                        then the System's core from $0801: jump table ($0810),
+                        public data, code
+block 2    $4000-$5fff  the System's overlays, loaded when first needed:
+                        Interface ($4000: alerts, dialogs, moving and sizing
+                        windows, start-up and shut-down) and Shapes ($5000:
+                        lines, ovals, circles, round rects)
+block 3    $6000-$7fff  the running application's core
 block 4    $8000-$9fff  the application's page block
 block 5    $a000-$bfff  QuickDraw's buffers: text/icon strips, shift tables
 block 6    $c000-$cfff  colour matrix, pointer sprites, QuickDraw's oval
                         table, menu save-under
-           $d000-$dfff  I/O
+           $d000-$dfff  I/O; the font glyphs in the RAM underneath
 block 7    $e000-$ff3f  the hires bitmap
 ```
 
-The C64 boots SYSTEM with `LOAD"*",8,1`. SYSTEM then loads FINDER with the
-KERNAL's LOAD while showing "Welcome to Commodore 64."
+Starting up: `LOAD` and `RUN` BOOT; it reads `System Folder/System.sys`
+through the WiC64 and jumps into it. The System loads the Interface overlay
+(for the start-up screen), then `System Folder/Finder.sys`.
+
+The share, as the C64 sees it:
+
+```
+System Folder/System.sys      the System's core
+System Folder/Interface.ovl   overlay 1
+System Folder/Shapes.ovl      overlay 2
+System Folder/Finder.sys      the Finder
+Brickles.app, Spreadsheet.app, Shapes.app
+```
+
+The WiC64 speaks its usual transfer protocol; the file service adds a few
+commands to it, described in [docs/fileservice.md](docs/fileservice.md).
+
+Overlays are called through stubs in the core: a call into an overlay that
+isn't loaded loads it first, from the share, in about a tenth of a second
+(`src/overlay.asm`). Each overlay starts with a table of its entry points;
+`tools/mkovl.py` makes the stubs from those tables.
 
 Applications call the System only through its jump table, and read its
 public data at fixed addresses after the table. Both are described in
@@ -107,26 +146,31 @@ click, key, quit, plus pointers to its window classes, its menus and its
 
 | Source | What |
 |---|---|
-| `src/system.asm` | SYSTEM: memory map and entry point |
+| `src/bootstrap.asm` | BOOT |
+| `src/system.asm` | the System's core: memory map and entry point |
 | `src/jumptab.asm`, `src/public.asm` | the API: jump table and public data |
 | `src/gfx.asm` | rectangles, patterns, clipping, text and icon blitting |
-| `src/qd_shapes.asm` | lines, ovals, circles, round rects |
-| `src/wm.asm`, `menu.asm`, `dialog.asm`, `events.asm` | windows, menus, dialogs, event loop |
+| `src/wm.asm`, `menu.asm`, `events.asm` | windows, menus, event loop |
 | `src/sys.asm` | IRQ, 1351 mouse, keyboard, pointer sprites, beep |
-| `src/loader.asm`, `boot.asm` | disk loading, start-up, app switching |
+| `src/net.asm` | the WiC64 driver and the file calls |
+| `src/overlay.asm` | the overlay manager |
+| `src/boot.asm` | start-up, loading and switching applications |
+| `src/ovl_interface.asm`: `dialog.asm`, `wm_gestures.asm`, `startup.asm` | overlay 1 |
+| `src/ovl_shapes.asm`: `qd_shapes.asm` | overlay 2: lines, ovals, circles, round rects |
 | `src/fp.asm` | BASIC ROM floating point bridge |
 | `src/da_*.asm` | desk accessories (not built for now) |
 | `src/finder*.asm` | the Finder |
 | `src/brickles*.asm`, `src/sheet*.asm`, `src/shapes_main.asm` | the applications |
 | `tools/fonts.py`, `tools/icons.py` | fonts, icons and cursors drawn as ASCII art |
 | `tools/mkapi.py` | publishes the API: `build/sysapi.asm`, `docs/api.md` |
+| `tools/mkovl.py` | the overlays' stubs and symbol files |
 | `tools/d64.py` | disk image writer |
 
 ## The patched Frodo
 
 `frodo4/` is [Frodo 4](https://github.com/cebix/frodo4) by Christian Bauer
-(upstream commit `59f096d`) with two additions. They're shown as one commit
-in this repo's history, and also as `patches/frodo4-mouse1351-testbench.patch`.
+(upstream commit `59f096d`) with these additions, also collected in
+`patches/frodo4.patch`.
 
 - **1351 mouse emulation** (`Mouse1351=true`): the host pointer drives an
   emulated Commodore 1351 on the SID's paddle registers. Stock Frodo has no
@@ -135,6 +179,10 @@ in this repo's history, and also as `patches/frodo4-mouse1351-testbench.patch`.
   position block at `$FB`–`$FE` and sends exactly the movement that puts the
   C64 pointer on the same pixel as the host pointer, so it can't drift.
   The block and the driver are described in [docs/mouse.md](docs/mouse.md).
+- **WiC64** (`WiC64=true WiC64Share=folder`): a WiC64 on the user port,
+  speaking its transfer protocol, with a few of its standard commands and
+  the file service ([docs/fileservice.md](docs/fileservice.md)) on a folder
+  of the host.
 - **Test-bench scripting** (`TestInput=script.txt` with `TestBench=true`): a
   frame-by-frame script of `mouse x y`, `down`/`up`, `keydown`/`keyup`
   (SDL key names or raw scancode numbers), `type text`, `shot file.bmp`,
@@ -155,9 +203,10 @@ range.
 
 ## Known issues
 
-- The Finder's disk contents are a built-in table, not the real 1541
-  directory, so moved, renamed or trashed icons are forgotten on Restart or
-  when switching applications. Documents can't be saved yet.
+- The Finder's windows still show a built-in table, not the share's real
+  folders (the next step), so moved, renamed or trashed icons are forgotten
+  on Restart or when switching applications. Documents can't be saved yet.
+- The ESP32 firmware for a real WiC64 isn't written yet.
 - View by Name/Date/Size/Kind, Print and Erase Disk are not implemented.
 
 ## Credits

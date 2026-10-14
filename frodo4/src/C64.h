@@ -83,6 +83,7 @@ class Cartridge;
 class MOS6502_1541;
 class GCRDisk;
 class Tape;
+class WiC64;
 struct Snapshot;
 
 
@@ -157,6 +158,7 @@ public:
 	GCRDisk * TheGCRDisk;
 
 	Tape * TheTape;				// Datasette object
+	WiC64 * TheWiC64;			// WiC64 on the user port
 
 	// Builtin ROM data
 	static const uint8_t BuiltinBasicROM[BASIC_ROM_SIZE];

@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """Rewrite out-of-range branches reported by ACME as inverted branch + jmp."""
-import re, subprocess, sys
+import glob, os, re, subprocess, sys
 INV = {"bcc":"bcs","bcs":"bcc","beq":"bne","bne":"beq","bmi":"bpl","bpl":"bmi","bvc":"bvs","bvs":"bvc"}
-PROGRAMS = ["finder", "brickles", "sheet", "shapes"]   # applications, after the System
+APPS = ["finder", "brickles", "sheet", "shapes"]   # applications, after the System
 def acme(name, src):
     return subprocess.run(["acme", "-v1", "--msvc", "-r", f"build/{name}.lst", "-l", f"build/{name}.sym", src],
                           capture_output=True, text=True)
+def ok(r):
+    return "Error" not in r.stdout + r.stderr
 for it in range(30):
+    subprocess.run(["python3", "tools/mkovl.py", "stubs", "build/ovl_stubs.asm"])
     r = acme("system", "src/system.asm")
-    if "Error" not in r.stdout+r.stderr:
-        subprocess.run(["python3","tools/mkapi.py","build/system.sym","build/sysapi.asm","docs/api.md"])
-        for name in PROGRAMS:
-            r = acme(name, f"src/{name}_main.asm")
-            if "Error" in r.stdout+r.stderr:
+    if ok(r):
+        subprocess.run(["python3", "tools/mkapi.py", "build/system.sym", "build/sysapi.asm", "docs/api.md"])
+        subprocess.run(["python3", "tools/mkovl.py", "syms", "build/system.sym"])
+        later = [(os.path.basename(f)[:-4], f) for f in sorted(glob.glob("src/ovl_*.asm"))]
+        later += [(n, f"src/{n}_main.asm") for n in APPS]
+        for name, src in later:            # the overlays, then the applications
+            r = acme(name, src)
+            if not ok(r):
                 break
     errs = re.findall(r'^(\S+)\((\d+)\) : Error \([^)]*\): Target out of range', r.stdout+r.stderr, re.M)
     if not errs:

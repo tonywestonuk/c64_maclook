@@ -2184,17 +2184,17 @@ app_open:
 brickles_launch:
         lda #<str_brickles_file
         ldy #>str_brickles_file
-        ldx #8
+        ldx #str_sheet_file-str_brickles_file
         bne app_launch
 sheet_launch:
         lda #<str_sheet_file
         ldy #>str_sheet_file
-        ldx #5
+        ldx #str_shapes_file-str_sheet_file
         bne app_launch
 shapes_launch:
         lda #<str_shapes_file
         ldy #>str_shapes_file
-        ldx #6
+        ldx #str_files_end-str_shapes_file
 app_launch:
         sta u0
         sty u1
@@ -2207,9 +2207,10 @@ app_launch:
         ldy u1
         ldx u2
         jmp launch_app
-str_brickles_file: !text "BRICKLES"
-str_sheet_file:    !text "SHEET"
-str_shapes_file:   !text "SHAPES"
+str_brickles_file: !text "Brickles.app"
+str_sheet_file:    !text "Spreadsheet.app"
+str_shapes_file:   !text "Shapes.app"
+str_files_end:
 
 ; ---------------------------------------------------------------------
 ; Renaming: typing while an icon is selected replaces its name

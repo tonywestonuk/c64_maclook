@@ -264,6 +264,11 @@ set_pat_copy:
         sta rmode
         rts
 
+; set_mode: A = M_COPY, M_OR, M_XOR or M_BIC for the pattern set last
+set_mode:
+        sta rmode
+        rts
+
 ; ---------------------------------------------------------------------
 ; fill_rect: fill rx1,ry1 - rx2,ry2 with pattern pat in mode rmode
 ; Preserves the rect parameters.
@@ -761,8 +766,24 @@ char_width:
 ; draw_text: string tstr at tx,ty in font, blit mode tmode, clipped.
 ; The glyph top row is drawn at ty.  Leaves twidth = pixel width.
 ; ---------------------------------------------------------------------
-!zone draw_text
+; draw_text reads the glyphs from the RAM under the I/O chips, so it runs
+; with them switched out (and interrupts off, as the interrupt routine
+; uses them)
 draw_text:
+        php
+        sei
+        lda $01
+        pha
+        lda #$34
+        sta $01
+        jsr draw_text_ram
+        pla
+        sta $01
+        plp
+        rts
+
+!zone draw_text
+draw_text_ram:
         jsr font_setup
         lda tx
         and #7
@@ -1489,3 +1510,42 @@ restore_area:
         inx
         jmp .col
 +       rts
+
+; ---------------------------------------------------------------------
+; draw string A/Y centred in the content, X = y offset
+draw_centred_at:
+        stx t7
+        jmp +
+draw_centred_line:
+        ldx #4
+        stx t7
++       sta tstr
+        sty tstr+1
+        jsr text_width
+        clc
+        lda wc_x1
+        adc wc_x2
+        sta tx
+        lda wc_x1+1
+        adc wc_x2+1
+        sta tx+1
+        sec
+        lda tx
+        sbc twidth
+        sta tx
+        lda tx+1
+        sbc twidth+1
+        lsr
+        sta tx+1
+        lda tx
+        ror
+        sta tx
+        lda wc_y1
+        clc
+        adc t7
+        sta ty
+        lda #0
+        sta ty+1
+        lda #B_OR
+        sta tmode
+        jmp draw_text

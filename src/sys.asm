@@ -168,13 +168,6 @@ irq:    pha
         pla
         rti
 
-; the same, entered through the KERNAL's IRQ vector ($0314) while the
-; KERNAL is banked in for disk access (it has pushed the registers)
-irq_k:  lda $d019
-        sta $d019
-        jsr irq_body
-        jmp $ea81
-
 irq_body:
         inc jiffy
         bne +

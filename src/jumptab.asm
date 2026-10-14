@@ -108,6 +108,17 @@ JT_SLOTS   = 128
         jmp fill_circle         ; filled circle: centre rx1,ry1, radius A
         jmp frame_rrect         ; outline of rx1..ry2 with corners of radius A
         jmp fill_rrect          ; rx1..ry2 with corners of radius A, filled
+; --- files on the network share (docs/fileservice.md); carry set on error, A = status
+        jmp fs_info             ; total KB, free KB and the share's name to (fs_rptr)
+        jmp fs_list             ; folder q0: entries from fs_first, at most fs_max, to (fs_rptr)
+        jmp fs_read             ; fs_len bytes at fs_off of file q0 to (fs_rptr)
+        jmp fs_load             ; program file q0 to the address in its first two bytes
+        jmp fs_write            ; fs_dlen bytes from (fs_dptr) to file q0, mode fs_mode
+        jmp fs_delete           ; delete file or empty folder q0
+        jmp fs_rename           ; rename or move q0 to q1
+        jmp fs_copy             ; copy file q0 to q1
+        jmp fs_mkdir            ; new folder q0
+        jmp fs_stat             ; kind (1) and size (4) of q0 to (fs_rptr)
 
 !if * > JUMP_TABLE + JT_SLOTS*3 { !error "jump table full" }
         !fill JUMP_TABLE + JT_SLOTS*3 - *, $60

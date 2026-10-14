@@ -155,3 +155,8 @@ u6      = $8e
 u7      = $8f
 
 jvec    = $90           ; vector for indirect jumps (never at $xxff)
+
+; @private
+; (the KERNAL's half of zero page, ours since SYSTEM no longer uses it)
+ovp     = $92           ; overlay manager: the stub's bytes
+ovt     = $94           ; overlay manager: the routine to call

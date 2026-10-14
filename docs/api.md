@@ -155,6 +155,21 @@ A, X, Y and the zero page registers below.
 | `$0909` | `frame_rrect` | outline of rx1..ry2 with corners of radius A |
 | `$090c` | `fill_rrect` | rx1..ry2 with corners of radius A, filled |
 
+### Files on the network share (docs/fileservice.md); carry set on error, A = status
+
+| Address | Call | |
+|---|---|---|
+| `$090f` | `fs_info` | total KB, free KB and the share's name to (fs_rptr) |
+| `$0912` | `fs_list` | folder q0: entries from fs_first, at most fs_max, to (fs_rptr) |
+| `$0915` | `fs_read` | fs_len bytes at fs_off of file q0 to (fs_rptr) |
+| `$0918` | `fs_load` | program file q0 to the address in its first two bytes |
+| `$091b` | `fs_write` | fs_dlen bytes from (fs_dptr) to file q0, mode fs_mode |
+| `$091e` | `fs_delete` | delete file or empty folder q0 |
+| `$0921` | `fs_rename` | rename or move q0 to q1 |
+| `$0924` | `fs_copy` | copy file q0 to q1 |
+| `$0927` | `fs_mkdir` | new folder q0 |
+| `$092a` | `fs_stat` | kind (1) and size (4) of q0 to (fs_rptr) |
+
 ## Public data
 
 Fixed addresses after the jump table. Applications read these and set the
@@ -305,7 +320,23 @@ ones that are parameters (`dlg_*`, `zr_*`, settings).
 |---|---|---|
 | `$0ba3` | `pn_x` |  |
 | `$0ba5` | `pn_y` |  |
-| `$0ba6` | `public_end` |  |
+
+### The file calls (fs_*): parameters and results
+
+| Address | Name | |
+|---|---|---|
+| `$0ba6` | `fs_off` | position in the file |
+| `$0baa` | `fs_len` | bytes to read |
+| `$0bac` | `fs_mode` | fs_write: FSW_REPLACE, FSW_AT or FSW_APPEND |
+| `$0bad` | `fs_first` | fs_list: first entry |
+| `$0baf` | `fs_max` | fs_list: most entries |
+| `$0bb0` | `fs_rptr` | where results go |
+| `$0bb2` | `fs_rmax` | room there (more is dropped) |
+| `$0bb4` | `fs_rlen` | result: bytes received |
+| `$0bb6` | `fs_dptr` | fs_write: the data |
+| `$0bb8` | `fs_dlen` | fs_write: its length |
+| `$0bba` | `fs_status` | result: status of the last call |
+| `$0bbb` | `public_end` |  |
 
 ## Zero page registers
 

@@ -40,6 +40,7 @@
 #include "sysdeps.h"
 
 #include "CIA.h"
+#include "WiC64.h"
 #include "CPUC64.h"
 #include "CPU1541.h"
 #include "VIC.h"
@@ -275,6 +276,12 @@ uint8_t MOS6526_2::ReadRegister(uint8_t reg)
 			break;
 		}
 		case 1: {	// Port B: User port
+			if (the_wic64 && the_wic64->Enabled()) {
+				SetPBIn(the_wic64->PortBIn());
+				uint8_t ret = read_register(reg);
+				the_wic64->PortBRead();		// The read strobes PC2
+				return ret;
+			}
 			SetPBIn(0xff);
 			break;
 		}
@@ -338,6 +345,14 @@ void MOS6526_2::WriteRegister(uint8_t reg, uint8_t byte)
 		case 0:	// Port A: Handle VIC bank and IEC port
 		case 2:
 			write_pa(~PAOut());
+			if (the_wic64) {
+				the_wic64->SetPA2(PAOut() & 0x04);
+			}
+			break;
+		case 1:	// Port B: the write strobes PC2
+			if (the_wic64) {
+				the_wic64->PortBWritten(PBOut());
+			}
 			break;
 	}
 }

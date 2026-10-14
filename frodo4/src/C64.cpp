@@ -32,6 +32,7 @@
 #include "REU.h"
 #include "SID.h"
 #include "Tape.h"
+#include "WiC64.h"
 #include "VIC.h"
 
 #include <SDL.h>
@@ -148,6 +149,8 @@ C64::C64() : quit_requested(false), prefs_editor_requested(false), load_snapshot
 	TheCIA2 = TheCPU1541->TheCIA2 = new MOS6526_2(TheCPU, TheVIC, TheCPU1541);
 	TheIEC = new IEC(this);
 	TheTape = new Tape(TheCIA1);
+	TheWiC64 = TheCIA2->the_wic64 = new WiC64(TheCIA2);
+	TheWiC64->NewPrefs(&ThePrefs);
 
 	TheCart = new NoCartridge;
 	swap_cartridge(REU_NONE, "", ThePrefs.REUType, ThePrefs.CartridgePath);
@@ -183,6 +186,7 @@ C64::~C64()
 	open_close_joysticks(ThePrefs.Joystick1Port, ThePrefs.Joystick2Port, 0, 0);
 
 	delete TheTape;
+	delete TheWiC64;
 	delete TheGCRDisk;
 	delete TheCart;
 	delete TheIEC;
@@ -313,6 +317,7 @@ int C64::Run()
 	TheCPU1541->Reset();
 	TheGCRDisk->Reset();
 	TheTape->Reset();
+	TheWiC64->Reset();
 
 	// Remember start time of first frame
 	frame_start = chrono::steady_clock::now();
@@ -371,6 +376,7 @@ void C64::Reset(bool clear_memory)
 	TheCIA2->Reset();
 	TheIEC->Reset();
 	TheCart->Reset();
+	TheWiC64->Reset();
 	reset_mouse();
 	// Note: VIC has no reset input
 
@@ -418,6 +424,7 @@ void C64::NewPrefs(const Prefs *prefs)
 	TheIEC->NewPrefs(prefs);
 	TheGCRDisk->NewPrefs(prefs);
 	TheTape->NewPrefs(prefs);
+	TheWiC64->NewPrefs(prefs);
 
 	TheSID->NewPrefs(prefs);
 

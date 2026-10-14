@@ -82,6 +82,9 @@ zr_x2:   !word 0
 zr_y2:   !byte 0
 
 ; --- dialogs (dlg_open, alerts) --------------------------------------
+DLG_ALERT    = 0        ; dlg_kind
+DLG_CUSTOM   = 1        ; drawn by dlg_custom (applications)
+DLG_SHUTDOWN = 2
 dlg_kind:  !byte 0      ; DLG_
 dlg_msg:   !word 0
 dlg_icon:  !word 0
@@ -120,5 +123,18 @@ pat_odd:   !byte $00,$ff,$00,$ff,$00,$ff,$00,$ff
 ; --- the pen (move_to, line_to) ----------------------------------------
 pn_x:      !word 0
 pn_y:      !byte 0
+
+; --- the file calls (fs_*): parameters and results --------------------
+fs_off:    !fill 4      ; position in the file
+fs_len:    !word 0      ; bytes to read
+fs_mode:   !byte 0      ; fs_write: FSW_REPLACE, FSW_AT or FSW_APPEND
+fs_first:  !word 0      ; fs_list: first entry
+fs_max:    !byte 0      ; fs_list: most entries
+fs_rptr:   !word 0      ; where results go
+fs_rmax:   !word 0      ; room there (more is dropped)
+fs_rlen:   !word 0      ; result: bytes received
+fs_dptr:   !word 0      ; fs_write: the data
+fs_dlen:   !word 0      ; fs_write: its length
+fs_status: !byte 0      ; result: status of the last call
 
 public_end:

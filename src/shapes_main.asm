@@ -93,9 +93,7 @@ sh_click:
 sh_action:
         cmp #SA_ABOUT
         bne +
-        lda #<str_sh_info
-        ldy #>str_sh_info
-        jmp alert_note
+        jmp sh_about
 +       cmp #SA_QUIT
         bne +
         jmp quit_app
@@ -154,6 +152,75 @@ sh_update_menus:
         ora #MF_CHECKED
 +       sta menu_flags+64+PENS+1
         rts
+
+; About Shapes: a dialog drawn by sh_about_draw (shapes inside a
+; dialog: the dialog and the shapes are both overlays of the System)
+!zone sh_about
+sh_about:
+        lda #DLG_CUSTOM
+        sta dlg_kind
+        lda #<sh_about_draw
+        sta dlg_custom
+        lda #>sh_about_draw
+        sta dlg_custom+1
+        lda #100
+        sta dlg_h
+        lda #0
+        sta dlg_x2h
+        lda #40
+        ldx #48
+        ldy #240
+        jsr dlg_open
+        bcs +
+        jsr wait_click_or_key
+        jmp dlg_close
++       rts
+
+sh_about_draw:
+        lda #0
+        sta font
+        lda #<str_sh_title
+        ldy #>str_sh_title
+        ldx #6
+        jsr draw_centred_at
+        jsr set_black           ; a circle, an oval and a round rect
+        lda #70
+        ldx #36
+        jsr sh_centre
+        lda #12
+        jsr fill_circle
+        lda #50
+        sta t7
+        lda #88
+        ldx #24
+        ldy #128
+        jsr content_rect
+        jsr set_gray
+        jsr fill_oval
+        jsr set_black
+        jsr frame_oval
+        lda #50
+        sta t7
+        lda #136
+        ldx #24
+        ldy #160
+        jsr content_rect
+        lda #6
+        jsr frame_rrect
+        lda #1
+        sta font
+        lda #<str_sh_info1
+        ldy #>str_sh_info1
+        ldx #58
+        jsr draw_centred_at
+        lda #<str_sh_info2
+        ldy #>str_sh_info2
+        ldx #68
+        jsr draw_centred_at
+        lda #<str_sh_info3
+        ldy #>str_sh_info3
+        ldx #80
+        jmp draw_centred_at
 
 ; ---------------------------------------------------------------------
 ; Drawing helpers.  Coordinates are relative to the content.
@@ -631,7 +698,9 @@ sh_items_pen:
         +item str_sh_invert, 'I', SA_INVERT
 
 str_sh_about:   !text "About Shapes", $13, 0
-str_sh_info:    !text "Shapes|QuickDraw lines, ovals, circles and round rects, drawn through the System's jump table. Click the window for the next picture.", 0
+str_sh_info1:   !text "QuickDraw lines, ovals, circles and round", 0
+str_sh_info2:   !text "rects, through the System's jump table.", 0
+str_sh_info3:   !text "Click to continue.", 0
 str_sh_title:   !text "Shapes", 0
 str_sh_file:    !text "File", 0
 str_sh_edit:    !text "Edit", 0

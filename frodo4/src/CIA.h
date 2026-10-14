@@ -25,6 +25,7 @@
 
 
 class MOS6510;
+class WiC64;
 class MOS6502_1541;
 class MOS6569;
 struct MOS6526State;
@@ -164,6 +165,8 @@ public:
 	uint8_t IECLines;		// State of IEC lines from C64 side
 							// (bit 5 - DATA, bit 4 - CLK, bit 3 - ATN)
 							// Wire-AND with 1541 state to obtain physical line state
+
+	WiC64 * the_wic64 = nullptr;	// WiC64 on the user port (or nullptr)
 
 private:
 	void trigger_irq() override;

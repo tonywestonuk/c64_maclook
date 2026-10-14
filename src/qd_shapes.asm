@@ -10,12 +10,6 @@
 
 OV_X = $c700            ; oval half-widths per row (128 bytes, block 6)
 
-; ---------------------------------------------------------------------
-; set_mode: A = M_COPY, M_OR, M_XOR or M_BIC for the pattern set last
-; ---------------------------------------------------------------------
-set_mode:
-        sta rmode
-        rts
 
 ; ---------------------------------------------------------------------
 ; plot: one pixel at A/X = x (signed), Y = y

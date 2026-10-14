@@ -70,6 +70,7 @@ Prefs::Prefs()
 	TestBench = false;
 	Mouse1351 = false;
 	MouseSync = false;
+	WiC64 = false;
 }
 
 
@@ -253,6 +254,12 @@ void Prefs::ParseItem(std::string item)
 
 	} else if (keyword == "TestInput") {
 		TestInputPath = value;
+
+	} else if (keyword == "WiC64") {
+		WiC64 = (value == "true");
+
+	} else if (keyword == "WiC64Share") {
+		WiC64Share = value;
 
 	} else if (keyword == "TestScreenshot") {
 		TestScreenshotPath = value;

@@ -132,6 +132,9 @@ public:
 	bool MouseSync;				// Steer the C64 driver's position block ($FB-$FE) onto the host pointer (not saved to preferences file)
 	std::string TestInputPath;	// Scripted mouse/keyboard input for test-bench mode (not saved to preferences file)
 
+	bool WiC64;					// Emulate a WiC64 on the user port (not saved to preferences file)
+	std::string WiC64Share;		// Host folder the WiC64 offers as its file share (not saved to preferences file)
+
 	std::string TestScreenshotPath;	// Path for screenshot to be saved on exit in test-bench mode (not saved to preferences file)
 };
 
