@@ -128,6 +128,9 @@ public:
 
 	std::string CartridgePath;	// Path for cartridge image file
 
+	bool Mouse1351;				// Emulate a 1351 mouse in port 1 that follows the host pointer (not saved to preferences file)
+	std::string TestInputPath;	// Scripted mouse/keyboard input for test-bench mode (not saved to preferences file)
+
 	std::string TestScreenshotPath;	// Path for screenshot to be saved on exit in test-bench mode (not saved to preferences file)
 };
 

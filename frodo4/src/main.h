@@ -40,9 +40,9 @@ public:
 	int ReadyToRun();
 
 	bool RunPrefsEditor();
+	void save_test_screenshot(const std::string & path);
 
 private:
-	void save_test_screenshot(const std::string & path);
 
 	std::filesystem::path prefs_path;		// Pathname of current preferences file
 	std::filesystem::path snapshot_path;	// Directory for saving snapshots

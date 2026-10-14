@@ -68,6 +68,7 @@ Prefs::Prefs()
 	ShowLEDs = true;
 	AutoStart = false;
 	TestBench = false;
+	Mouse1351 = false;
 }
 
 
@@ -242,6 +243,12 @@ void Prefs::ParseItem(std::string item)
 
 	} else if (keyword == "LoadProgram") {
 		LoadProgram = value;
+
+	} else if (keyword == "Mouse1351") {
+		Mouse1351 = (value == "true");
+
+	} else if (keyword == "TestInput") {
+		TestInputPath = value;
 
 	} else if (keyword == "TestScreenshot") {
 		TestScreenshotPath = value;

@@ -36,6 +36,7 @@ public:
 
 	void Reset();
 	uint8_t ReadRegister(uint16_t adr);
+	void SetPots(uint8_t x, uint8_t y) { pot_x_val = x; pot_y_val = y; }
 	void WriteRegister(uint16_t adr, uint8_t byte);
 	void NewPrefs(const Prefs * prefs);
 	void PauseSound();
@@ -78,6 +79,9 @@ private:
 	unsigned last_sid_seq;		// SID data bus leakage sequence step (counts down to 0)
 	uint16_t last_sid_cycles;	// Remaining cycles for SID data bus leakage sequence step
 	uint8_t last_sid_byte;		// Last value on SID data bus
+
+	uint8_t pot_x_val = 0xff;	// A/D converter values (0xff = nothing connected)
+	uint8_t pot_y_val = 0xff;
 
 	static uint16_t sid_leakage_cycles[9];
 	static uint8_t sid_leakage_mask[9];
@@ -228,8 +232,11 @@ inline uint8_t MOS6581::ReadRegister(uint16_t adr)
 {
 	bool start_leakage = false;
 
-	if (adr == 0x19 || adr == 0x1a) {
-		last_sid_byte = 0xff;			// A/D converters are not implemented
+	if (adr == 0x19) {
+		last_sid_byte = pot_x_val;		// A/D converters (only driven by mouse emulation)
+		start_leakage = true;
+	} else if (adr == 0x1a) {
+		last_sid_byte = pot_y_val;
 		start_leakage = true;
 	} else if (adr == 0x1b) {
 		last_sid_byte = read_osc3();	// Voice 3 oscillator read-back

@@ -64,6 +64,11 @@ public:
 	void PollKeyboard(uint8_t *key_matrix, uint8_t *rev_matrix, uint8_t *joystick);
 	bool NumLock();
 
+	// Host pointer in display coordinates, and button state (bit 0 = left, bit 1 = right)
+	void GetMouse(int &x, int &y, uint8_t &buttons) const { x = mouse_x; y = mouse_y; buttons = mouse_buttons; }
+	void SetMouse(int x, int y, uint8_t buttons) { mouse_x = x; mouse_y = y; mouse_buttons = buttons; }
+	void InjectKey(SDL_Scancode key, bool key_up, uint8_t *key_matrix, uint8_t *rev_matrix, uint8_t *joystick);
+
 private:
 	void init_colors(int palette_prefs);
 
@@ -87,6 +92,9 @@ private:
 	SDL_Window * the_window = nullptr;
 	SDL_Renderer * the_renderer = nullptr;
 	SDL_Texture * the_texture = nullptr;
+
+	int mouse_x = 0, mouse_y = 0;		// Host pointer position (display coordinates)
+	uint8_t mouse_buttons = 0;
 
 	uint8_t * vic_pixels = nullptr;		// Buffer for VIC to draw into
 	uint32_t palette[256];				// Mapping of VIC color values to native ARGB

@@ -167,8 +167,8 @@ Display::Display(C64 * c64) : the_c64(c64)
 	// Init color palette for pixel buffer
 	init_colors(ThePrefs.Palette);
 
-	// Hide mouse pointer in fullscreen mode
-	if (ThePrefs.DisplayType == DISPTYPE_SCREEN) {
+	// Hide mouse pointer in fullscreen mode, or when the C64 draws its own
+	if (ThePrefs.DisplayType == DISPTYPE_SCREEN || ThePrefs.Mouse1351) {
 		SDL_ShowCursor(SDL_DISABLE);
 	}
 
@@ -937,6 +937,33 @@ void Display::PollKeyboard(uint8_t *key_matrix, uint8_t *rev_matrix, uint8_t *jo
 				}
 				break;
 
+			// Host mouse (for 1351 emulation; coordinates are already scaled to the logical display size)
+			case SDL_MOUSEMOTION:
+				if (! ThePrefs.TestBench) {
+					mouse_x = event.motion.x;
+					mouse_y = event.motion.y;
+				}
+				break;
+
+			case SDL_MOUSEBUTTONDOWN:
+			case SDL_MOUSEBUTTONUP:
+				if (! ThePrefs.TestBench) {
+					uint8_t bit = 0;
+					if (event.button.button == SDL_BUTTON_LEFT) {
+						bit = 1;
+					} else if (event.button.button == SDL_BUTTON_RIGHT) {
+						bit = 2;
+					}
+					if (event.type == SDL_MOUSEBUTTONDOWN) {
+						mouse_buttons |= bit;
+					} else {
+						mouse_buttons &= ~bit;
+					}
+					mouse_x = event.button.x;
+					mouse_y = event.button.y;
+				}
+				break;
+
 			// Quit Frodo
 			case SDL_QUIT:
 				the_c64->RequestQuit();
@@ -953,6 +980,16 @@ void Display::PollKeyboard(uint8_t *key_matrix, uint8_t *rev_matrix, uint8_t *jo
 bool Display::NumLock()
 {
 	return num_locked;
+}
+
+
+/*
+ *  Press or release a key from a test script
+ */
+
+void Display::InjectKey(SDL_Scancode key, bool key_up, uint8_t *key_matrix, uint8_t *rev_matrix, uint8_t *joystick)
+{
+	translate_key(key, key_up, key_matrix, rev_matrix, joystick);
 }
 
 

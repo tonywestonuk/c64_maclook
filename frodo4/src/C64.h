@@ -25,6 +25,7 @@
 #include <SDL_gamecontroller.h>
 
 #include <chrono>
+#include <vector>
 #include <string>
 
 #include "Tape.h"
@@ -189,6 +190,9 @@ private:
 
 	int main_loop();
 	void poll_input();
+	void update_mouse();
+	void load_test_script();
+	void run_test_script();
 	void vblank();
 	void handle_rewind();
 	void reset_play_mode();
@@ -209,6 +213,17 @@ private:
 	int joy_maxtrigl[2], joy_maxtrigr[2];
 	bool joy_trigl_on[2], joy_trigr_on[2];
 	uint8_t joykey;				// Joystick keyboard emulation mask value
+
+	int mouse_cx = 0, mouse_cy = 0;	// 1351 counters as last presented to the C64 (= C64 pixels)
+
+	struct TestEvent {
+		unsigned frame;
+		std::string cmd;
+		std::string arg;
+	};
+	std::vector<TestEvent> test_events;	// Scripted input (TestInput pref), sorted by frame
+	size_t test_event_index = 0;
+	unsigned test_frame = 0;
 
 	std::chrono::time_point<std::chrono::steady_clock> frame_start;	// Start time of last frame (for speed control)
 	unsigned frame_skip_factor;				// For display update limiting

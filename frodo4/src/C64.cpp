@@ -39,6 +39,8 @@
 #include <chrono>
 #include <memory>
 #include <thread>
+#include <fstream>
+#include <sstream>
 #include <utility>
 namespace chrono = std::chrono;
 
@@ -693,6 +695,10 @@ void C64::vblank()
 	// Poll keyboard and joysticks
 	poll_input();
 
+	// Scripted test input and mouse emulation
+	run_test_script();
+	update_mouse();
+
 	// Handle request for prefs editor
 	if (prefs_editor_requested) {
 		pause();
@@ -901,6 +907,212 @@ void C64::poll_input()
 	} else {
 		TheCIA1->Joystick2 &= joykey;
 	}
+
+	// 1351 mouse buttons: left = fire, right = up (port 1)
+	if (ThePrefs.Mouse1351) {
+		int x, y;
+		uint8_t buttons;
+		TheDisplay->GetMouse(x, y, buttons);
+		if (buttons & 1) {
+			TheCIA1->Joystick1 &= ~0x10;
+		}
+		if (buttons & 2) {
+			TheCIA1->Joystick1 &= ~0x01;
+		}
+	}
+}
+
+
+/*
+ *  1351 mouse emulation (proportional mode), called once per frame.
+ *
+ *  The host pointer position is converted to C64 screen pixels, and the
+ *  mouse counters are moved toward it. A 1351 reports its position modulo 64
+ *  in bits 1..6 of POTX/POTY, so drivers can only see moves of up to +-31
+ *  counts between two reads; larger moves are spread over several frames.
+ *  As long as the C64 clamps its pointer to the same 320x200 area, its
+ *  pointer stays exactly under the host pointer.
+ */
+
+static const int MOUSE_X_OFFSET = 32;	// Display position of C64 screen pixel (0,0)
+static const int MOUSE_Y_OFFSET = 35;
+
+void C64::update_mouse()
+{
+	if (! ThePrefs.Mouse1351) {
+		return;
+	}
+
+	int x, y;
+	uint8_t buttons;
+	TheDisplay->GetMouse(x, y, buttons);
+
+	int tx = std::clamp(x - MOUSE_X_OFFSET, 0, 319);
+	int ty = std::clamp(y - MOUSE_Y_OFFSET, 0, 199);
+
+	mouse_cx += std::clamp(tx - mouse_cx, -31, 31);
+	mouse_cy += std::clamp(ty - mouse_cy, -31, 31);
+
+	// POTY counts up when the mouse moves away from the user (screen up)
+	TheSID->SetPots((mouse_cx & 0x3f) << 1, (-mouse_cy & 0x3f) << 1);
+}
+
+
+/*
+ *  Test-bench input script (TestInput pref). One command per line:
+ *
+ *    <frame> mouse <x> <y>     move host pointer to C64 screen pixel (x,y)
+ *    <frame> down | up         left button
+ *    <frame> rdown | rup       right button
+ *    <frame> keydown <name>    SDL scancode name, e.g. "A", "Return", "Left Shift"
+ *    <frame> keyup <name>
+ *    <frame> type <text>       type text, one key every 4 frames
+ *    <frame> shot <file.bmp>   save a screenshot
+ *    <frame> dump <file>       save 64K RAM + CPU registers
+ *    <frame> quit
+ */
+
+void C64::load_test_script()
+{
+	std::ifstream in(ThePrefs.TestInputPath);
+	if (! in) {
+		fprintf(stderr, "Cannot open test input '%s'\n", ThePrefs.TestInputPath.c_str());
+		return;
+	}
+
+	std::string line;
+	while (std::getline(in, line)) {
+		std::istringstream ls(line);
+		TestEvent e;
+		if (! (ls >> e.frame >> e.cmd) || e.cmd[0] == '#') {
+			continue;
+		}
+		std::getline(ls >> std::ws, e.arg);
+
+		if (e.cmd == "type") {
+
+			// Expand into key presses
+			unsigned f = e.frame;
+			for (char c : e.arg) {
+				bool shift = false;
+				std::string name;
+				if (c >= 'a' && c <= 'z') {
+					name = std::string(1, c - 32);
+				} else if (c >= 'A' && c <= 'Z') {
+					name = std::string(1, c);
+					shift = true;
+				} else if (c >= '0' && c <= '9') {
+					name = std::string(1, c);
+				} else if (c == ' ') {
+					name = "Space";
+				} else if (c == '.') {
+					name = ".";
+				} else if (c == ',') {
+					name = ",";
+				} else if (c == '/') {
+					name = "/";
+				} else if (c == '|') {
+					name = "Return";
+				} else if (c == '=') {		// C64 key positions (Frodo maps positionally)
+					name = "PageDown";
+				} else if (c == '*') {
+					name = "]";
+				} else if (c == ':') {
+					name = ";";
+				} else if (c == '+') {
+					name = "-";
+				} else if (c == '-') {
+					name = "=";
+				} else if (c == '(') {
+					name = "8";
+					shift = true;
+				} else if (c == ')') {
+					name = "9";
+					shift = true;
+				} else {
+					continue;
+				}
+				if (shift) test_events.push_back({f, "keydown", "Left Shift"});
+				test_events.push_back({f, "keydown", name});
+				test_events.push_back({f + 2, "keyup", name});
+				if (shift) test_events.push_back({f + 2, "keyup", "Left Shift"});
+				f += 4;
+			}
+		} else {
+			test_events.push_back(e);
+		}
+	}
+
+	std::stable_sort(test_events.begin(), test_events.end(),
+		[](const TestEvent & a, const TestEvent & b) { return a.frame < b.frame; });
+}
+
+void C64::run_test_script()
+{
+	if (ThePrefs.TestInputPath.empty()) {
+		return;
+	}
+	if (test_frame == 0) {
+		load_test_script();
+	}
+
+	while (test_event_index < test_events.size() && test_events[test_event_index].frame <= test_frame) {
+		const TestEvent & e = test_events[test_event_index++];
+
+		int x, y;
+		uint8_t buttons;
+		TheDisplay->GetMouse(x, y, buttons);
+
+		if (e.cmd == "mouse") {
+			int sx = 0, sy = 0;
+			sscanf(e.arg.c_str(), "%d %d", &sx, &sy);
+			TheDisplay->SetMouse(sx + MOUSE_X_OFFSET, sy + MOUSE_Y_OFFSET, buttons);
+		} else if (e.cmd == "down") {
+			TheDisplay->SetMouse(x, y, buttons | 1);
+		} else if (e.cmd == "up") {
+			TheDisplay->SetMouse(x, y, buttons & ~1);
+		} else if (e.cmd == "rdown") {
+			TheDisplay->SetMouse(x, y, buttons | 2);
+		} else if (e.cmd == "rup") {
+			TheDisplay->SetMouse(x, y, buttons & ~2);
+		} else if (e.cmd == "keydown" || e.cmd == "keyup") {
+			SDL_Scancode sc = SDL_GetScancodeFromName(e.arg.c_str());
+			if (sc == SDL_SCANCODE_UNKNOWN && isdigit((unsigned char)e.arg[0])) {
+				sc = (SDL_Scancode) atoi(e.arg.c_str());	// raw scancode number
+			}
+			if (sc == SDL_SCANCODE_UNKNOWN) {
+				fprintf(stderr, "Unknown key '%s' in test input\n", e.arg.c_str());
+			} else {
+				TheDisplay->InjectKey(sc, e.cmd == "keyup", TheCIA1->KeyMatrix, TheCIA1->RevMatrix, &joykey);
+			}
+		} else if (e.cmd == "shot") {
+			TheApp->save_test_screenshot(e.arg);
+		} else if (e.cmd == "dump") {
+			// 64K RAM followed by the CPU registers A X Y P SP PC
+			FILE * f = fopen(e.arg.c_str(), "wb");
+			if (f) {
+				fwrite(RAM, 1, 0x10000, f);
+				MOS6510State st;
+				TheCPU->GetState(&st);
+				uint8_t regs[7] = { st.a, st.x, st.y, st.p, (uint8_t)st.sp, (uint8_t)(st.pc & 0xff), (uint8_t)(st.pc >> 8) };
+				fwrite(regs, 1, 7, f);
+				fclose(f);
+			}
+		} else if (e.cmd == "quit") {
+			quit_requested = true;
+		}
+	}
+
+	// Mouse buttons must reach the CIA in this frame too
+	if (ThePrefs.Mouse1351) {
+		int x, y;
+		uint8_t buttons;
+		TheDisplay->GetMouse(x, y, buttons);
+		if (buttons & 1) TheCIA1->Joystick1 &= ~0x10;
+		if (buttons & 2) TheCIA1->Joystick1 &= ~0x01;
+	}
+
+	++test_frame;
 }
 
 
