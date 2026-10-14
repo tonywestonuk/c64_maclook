@@ -1,7 +1,7 @@
 # SHAPES: the QuickDraw demo, every page and the Invert pen
 dclick 292 30
 wait 60
-dclick 111 106
+dclick 55 105
 wait 400
 shot qd_1
 click 160 100 300

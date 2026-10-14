@@ -148,7 +148,7 @@ void Prefs::ParseItem(std::string item)
 	if (item.empty())
 		return;
 
-	static const std::regex prefsLine(R"((\S*)\s*=\s*([\S ]*))");
+	static const std::regex prefsLine(R"(([^=\s]*)\s*=\s*([\S ]*))");	// (the value may hold "=")
 
 	std::smatch m;
 	if (! std::regex_match(item, m, prefsLine)) {
@@ -257,6 +257,9 @@ void Prefs::ParseItem(std::string item)
 
 	} else if (keyword == "WiC64") {
 		WiC64 = (value == "true");
+
+	} else if (keyword == "WiC64Flash") {
+		WiC64Flash = value;
 
 	} else if (keyword == "WiC64Share") {
 		WiC64Share = value;

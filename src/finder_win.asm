@@ -233,7 +233,7 @@ info_draw:
         jsr draw_icon
         ; name in the system font
         ldx u3
-        jsr obj_name_ptr
+        jsr obj_label
         lda #0
         sta font
         lda #B_OR
@@ -283,51 +283,12 @@ info_draw:
         jsr info_text
         inc u4
         lda u4
-        cmp #5
+        cmp #4
         bne -
-        ; locked box
-        clc
-        lda wc_x1
-        adc #6
-        sta rx1
-        lda wc_x1+1
-        adc #0
-        sta rx1+1
-        clc
-        lda rx1
-        adc #6
-        sta rx2
-        lda rx1+1
-        adc #0
-        sta rx2+1
-        lda wc_y2
-        sec
-        sbc #10
-        sta ry1
-        clc
-        adc #6
-        sta ry2
-        jsr set_black
-        jsr frame_rect
-        lda #<str_locked
-        sta tstr
-        lda #>str_locked
-        sta tstr+1
-        clc
-        lda rx2
-        adc #4
-        sta tx
-        lda rx2+1
-        adc #0
-        sta tx+1
-        lda ry1
-        sta ty
-        lda #0
-        sta ty+1
-        jmp draw_text
+        rts
 
-info_labels_lo: !byte <str_kind, <str_size, <str_where, <str_created, <str_modified
-info_labels_hi: !byte >str_kind, >str_size, >str_where, >str_created, >str_modified
+info_labels_lo: !byte <str_kind, <str_size, <str_where, <str_modified
+info_labels_hi: !byte >str_kind, >str_size, >str_where, >str_modified
 
 ; draw A/Y at content x offset X, line u4
 info_text:
@@ -362,8 +323,7 @@ info_value:
         ldy u3
         cpx #0
         bne .size
-        ; kind
-        lda o_type,y
+        lda o_type,y            ; kind
         tax
         lda kind_lo,x
         pha
@@ -373,7 +333,69 @@ info_value:
         rts
 .size:  cpx #1
         bne .where
-        lda o_size,y
+        lda o_type,y
+        cmp #T_TRASH
+        bcc .vsize
+        cmp #T_APP
+        bcc .dash               ; (the Trash, folders)
+        lda o_kl,y              ; files: "nK"
+        ldx o_kh,y
+        jsr utoa
+        lda #<numbuf
+        sta q0
+        lda #>numbuf
+        sta q0+1
+.k:     lda #<iv_buf
+        sta q1
+        lda #>iv_buf
+        sta q1+1
+        jsr strcpy
+        lda #<str_k
+        sta q0
+        lda #>str_k
+        sta q0+1
+        jsr strcat
+        lda #<iv_buf
+        ldy #>iv_buf
+        rts
+.vsize: lda o_vol,y             ; volumes: their size
+        asl
+        asl
+        tax
+        ldy #0
+-       lda vol_total,x
+        sta ut_v,y
+        inx
+        iny
+        cpy #4
+        bne -
+        jsr kb_str
+        lda #<ut_buf
+        ldy #>ut_buf
+        rts
+.where: cpx #2
+        bne .date
+        lda o_parent,y
+        cmp #OBJ_TRASH
+        beq +
+        cmp #MAXOBJ
+        bcc +
+        lda #<str_desktop
+        ldy #>str_desktop
+        rts
++       tax
+        jsr obj_label
+        lda q1
+        ldy q1+1
+        rts
+.date:  lda o_dl,y              ; day month year
+        ora o_dh,y
+        bne +
+.dash:  lda #<str_dash
+        ldy #>str_dash
+        rts
++       lda o_dl,y
+        and #31
         ldx #0
         jsr utoa
         lda #<numbuf
@@ -385,54 +407,165 @@ info_value:
         lda #>iv_buf
         sta q1+1
         jsr strcpy
-        lda #<str_kondisk
+        ldy u3                  ; month: bits 8-5
+        lda o_dh,y
+        lsr
+        lda o_dl,y
+        ror
+        lsr
+        lsr
+        lsr
+        lsr
+        and #15
+        sec
+        sbc #1
+        cmp #12
+        bcc +
+        lda #0
++       sta t0                  ; (5 bytes each)
+        asl
+        asl
+        adc t0
+        adc #<str_months
         sta q0
-        lda #>str_kondisk
+        lda #>str_months
+        adc #0
+        sta q0+1
+        jsr strcat
+        ldy u3                  ; year: 1980 + bits 15-9
+        lda o_dh,y
+        lsr
+        clc
+        adc #<1980
+        pha
+        lda #>1980
+        adc #0
+        tax
+        pla
+        jsr utoa
+        lda #<str_space
+        sta q0
+        lda #>str_space
+        sta q0+1
+        jsr strcat
+        lda #<numbuf
+        sta q0
+        lda #>numbuf
         sta q0+1
         jsr strcat
         lda #<iv_buf
         ldy #>iv_buf
         rts
-.where: cpx #2
-        bne .date
-        lda o_parent,y
-        cmp #MAXOBJ
-        bcc +
-        lda #<str_desktop
-        ldy #>str_desktop
-        rts
-+       tax
-        jsr obj_name_ptr
-        lda q1
-        ldy q1+1
-        rts
-.date:  lda o_date,y
-        tax
-        lda date_lo,x
-        pha
-        lda date_hi,x
-        tay
-        pla
-        rts
-iv_buf: !fill 20
+iv_buf: !fill 24
 
-kind_lo: !byte <str_k_disk, <str_k_trash, <str_k_folder, <str_k_app, <str_k_doc, <str_k_sys
-kind_hi: !byte >str_k_disk, >str_k_trash, >str_k_folder, >str_k_app, >str_k_doc, >str_k_sys
-date_lo: !byte <str_d0, <str_d1, <str_d2, <str_d3, <str_d4, <str_d5, <str_d6
-date_hi: !byte >str_d0, >str_d1, >str_d2, >str_d3, >str_d4, >str_d5, >str_d6
+kind_lo: !byte <str_k_disk, <str_k_share, <str_k_trash, <str_k_folder, <str_k_app, <str_k_doc, <str_k_text, <str_k_sys
+kind_hi: !byte >str_k_disk, >str_k_share, >str_k_trash, >str_k_folder, >str_k_app, >str_k_doc, >str_k_text, >str_k_sys
 
 ; ---------------------------------------------------------------------
-; Text windows: Read Me (data 0) and the Clipboard (data 1)
+; Text windows: a text document (data 0) and the Clipboard (data 1)
 ; ---------------------------------------------------------------------
+TEXTMAX = 540
 !zone text_open
-readme_open:
+; text_open: X = a text document: read it, show it (one such window)
+text_open:
+        stx u3
+        jsr obj_path
+        bcc +
+        rts
++       lda #<path_a
+        sta q0
+        lda #>path_a
+        sta q0+1
         lda #0
-        beq text_open
+        ldx #3
+-       sta fs_off,x
+        dex
+        bpl -
+        lda #<(TEXTMAX-1)
+        sta fs_len
+        lda #>(TEXTMAX-1)
+        sta fs_len+1
+        lda #<text_buf
+        sta fs_rptr
+        lda #>text_buf
+        sta fs_rptr+1
+        lda #CUR_WATCH
+        jsr set_cursor
+        jsr fs_read
+        php
+        pha
+        lda #CUR_ARROW
+        jsr set_cursor
+        pla
+        plp
+        bcc +
+        jmp fs_alert
++       ; line ends become RETURNs (CR LF: one), other control codes spaces
+        lda #<text_buf
+        sta q0
+        sta q1
+        lda #>text_buf
+        sta q0+1
+        sta q1+1
+        lda fs_rlen
+        sta t0
+        lda fs_rlen+1
+        sta t1
+        ldy #0
+.c:     lda t0
+        ora t1
+        beq .end
+        lda t0
+        bne +
+        dec t1
++       dec t0
+        lda (q0),y
+        inc q0
+        bne +
+        inc q0+1
++       cmp #13
+        bne +
+        lda t0                  ; CR before LF: drop it
+        ora t1
+        beq .ret
+        lda (q0),y
+        cmp #10
+        beq .c
+.ret:   lda #13
+        bne .put
++       cmp #10
+        beq .ret
+        cmp #32
+        bcs +
+        lda #32
++       cmp #127
+        bcc .put
+        lda #"?"
+.put:   sta (q1),y
+        inc q1
+        bne .c
+        inc q1+1
+        jmp .c
+.end:   lda #0
+        sta (q1),y
+        ldx u3                  ; the title
+        jsr obj_label
+        lda q1
+        sta q0
+        lda q1+1
+        sta q0+1
+        lda #<text_title
+        sta q1
+        lda #>text_title
+        sta q1+1
+        jsr strcpy
+        lda #0
+        jmp text_window
 clip_open:
         lda #1
-text_open:
+text_window:
         sta u3
-        ; already open?
+        ; already open?  Then it shows the new text
         ldx #0
 -       lda w_used,x
         beq +
@@ -442,7 +575,12 @@ text_open:
         lda w_data,x
         cmp u3
         bne +
-        jmp win_select
+        stx u2
+        jsr win_select
+        ldx u2
+        jsr win_draw_frame
+        ldx u2
+        jmp win_refresh
 +       inx
         cpx #MAXWIN
         bne -
@@ -477,8 +615,8 @@ text_x1: !byte 24, 60
 text_x2: !byte 250, 255
 text_y1: !byte 22, 120
 text_y2: !byte 178, 185
-text_title_lo: !byte <str_o_readme, <str_clipboard
-text_title_hi: !byte >str_o_readme, >str_clipboard
+text_title_lo: !byte <text_title, <str_clipboard
+text_title_hi: !byte >text_title, >str_clipboard
 
 text_close:
         rts
@@ -487,9 +625,9 @@ text_close:
 text_draw:
         lda w_data,x
         bne .clip
-        lda #<str_readme_text
+        lda #<text_buf
         sta q3
-        lda #>str_readme_text
+        lda #>text_buf
         sta q3+1
         jmp .draw
 .clip:  lda clip_len
@@ -527,4 +665,3 @@ text_draw:
         lda #B_OR
         sta tmode
         jmp wrap_draw
-

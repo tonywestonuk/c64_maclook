@@ -20,16 +20,18 @@ acme -v1 --msvc -r build/sheet.lst -l build/sheet.sym "$@" src/sheet_main.asm
 acme -v1 --msvc -r build/shapes.lst -l build/shapes.sym "$@" src/shapes_main.asm
 acme -v1 --msvc -r build/boot.lst -l build/boot.sym "$@" src/bootstrap.asm
 
-# The network share: what the WiC64 offers the C64 (Frodo serves this
-# folder; on real hardware, copy it to the SMB share)
-mkdir -p "share/System Folder" "share/Empty Folder"
-cp build/system.prg "share/System Folder/System.sys"
-cp build/finder.prg "share/System Folder/Finder.sys"
-cp build/interface.ovl "share/System Folder/Interface.ovl"
-cp build/shapes.ovl "share/System Folder/Shapes.ovl"
-cp build/brickles.prg share/Brickles.app
-cp build/sheet.prg share/Spreadsheet.app
-cp build/shapes.prg share/Shapes.app
+# The WiC64's internal flash: the startup disk, with the System Folder and
+# the applications (Frodo serves this folder as volume 0; on a real WiC64
+# it is uploaded to the flash with the firmware)
+mkdir -p "flash/System Folder" "flash/Empty Folder"
+cp build/system.prg "flash/System Folder/System.sys"
+cp build/interface.ovl "flash/System Folder/Interface.ovl"
+cp build/shapes.ovl "flash/System Folder/Shapes.ovl"
+cp build/finder.prg "flash/System Folder/Finder.sys"
+cp build/brickles.prg flash/Brickles.app
+cp build/sheet.prg flash/Spreadsheet.app
+cp build/shapes.prg flash/Shapes.app
+# (share/ is a sample network share: documents, kept in the repository)
 
 # The boot floppy: just BOOT, which loads SYSTEM from the share
 python3 tools/d64.py build/desktop64.d64 "C64 DESKTOP" build/boot.prg:BOOT

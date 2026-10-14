@@ -3,7 +3,7 @@
 466 up
 478 down
 482 up
-602 mouse 111 106
+602 mouse 55 105
 614 down
 618 up
 630 down

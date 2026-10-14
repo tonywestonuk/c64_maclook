@@ -1,0 +1,17 @@
+450 mouse 292 26
+462 down
+466 up
+478 down
+482 up
+622 mouse 292 64
+634 down
+638 up
+650 down
+654 up
+794 shot build/vo_1.bmp
+795 mouse 81 89
+807 down
+811 up
+823 down
+827 up
+947 shot build/vo_2.bmp

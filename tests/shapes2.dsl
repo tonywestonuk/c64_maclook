@@ -1,7 +1,7 @@
 # SHAPES: the Pen menu (Grey, Invert) on Circles and Random
 dclick 292 30
 wait 60
-dclick 111 106
+dclick 55 105
 wait 400
 menu 161 28
 wait 150

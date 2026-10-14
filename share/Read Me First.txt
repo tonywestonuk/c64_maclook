@@ -1,0 +1,5 @@
+This is a network share.
+
+The Commodore 64 reaches it through the WiC64 on its user port. Files you put here from a PC or a Mac appear in its window on the C64, and the C64 can open, copy, rename and delete them.
+
+Drag a file from here onto the System Disk to copy it into the WiC64's own flash. Drag this share's icon to the Trash to disconnect it.

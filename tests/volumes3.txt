@@ -1,0 +1,71 @@
+450 mouse 292 26
+462 down
+466 up
+478 down
+482 up
+622 keydown 226
+624 keydown N
+627 keyup N
+628 keyup 226
+718 type Games
+748 keydown Return
+751 keyup Return
+819 shot build/v3_1.bmp
+820 mouse 55 69
+832 down
+840 mouse 55 78
+843 mouse 55 87
+846 mouse 55 96
+849 mouse 55 105
+852 mouse 55 114
+855 mouse 55 123
+858 mouse 55 132
+861 mouse 55 141
+874 up
+1004 shot build/v3_2.bmp
+1005 mouse 191 69
+1017 down
+1025 mouse 204 81
+1028 mouse 217 93
+1031 mouse 230 106
+1034 mouse 243 118
+1037 mouse 256 130
+1040 mouse 269 143
+1043 mouse 282 155
+1046 mouse 296 168
+1059 up
+1189 shot build/v3_3.bmp
+1190 mouse 157 5
+1202 down
+1222 mouse 157 28
+1242 up
+1402 shot build/v3_4.bmp
+1403 mouse 292 64
+1415 down
+1419 up
+1431 down
+1435 up
+1595 mouse 207 89
+1607 down
+1615 mouse 217 81
+1618 mouse 228 73
+1621 mouse 238 65
+1624 mouse 249 57
+1627 mouse 260 49
+1630 mouse 270 41
+1633 mouse 281 33
+1636 mouse 292 26
+1649 up
+1819 shot build/v3_5.bmp
+1820 mouse 292 64
+1832 down
+1840 mouse 292 77
+1843 mouse 293 90
+1846 mouse 293 103
+1849 mouse 294 116
+1852 mouse 294 129
+1855 mouse 295 142
+1858 mouse 295 155
+1861 mouse 296 168
+1874 up
+2024 shot build/v3_6.bmp

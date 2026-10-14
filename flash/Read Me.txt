@@ -1,0 +1,10 @@
+Welcome to the Commodore 64 desktop!
+
+A tribute to the 1987 Macintosh Finder, on a Commodore 64 with a WiC64.
+
+- Point with the mouse (or a joystick in port 2).
+- Double-click icons to open them.
+- Drag icons to folders, or to the Trash.
+- Click an icon and type to rename it.
+- Open a network share's icon to connect to it; drag it to the Trash to disconnect.
+- The Command key is C= (Alt on a PC keyboard).

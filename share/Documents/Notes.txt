@@ -1,0 +1,5 @@
+Notes
+
+- The System Disk is the WiC64's internal flash. The C64 starts from it, even without a network.
+- Network shares are connected when you open their icon.
+- Names can be up to 31 characters long.

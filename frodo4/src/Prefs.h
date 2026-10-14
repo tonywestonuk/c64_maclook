@@ -133,7 +133,8 @@ public:
 	std::string TestInputPath;	// Scripted mouse/keyboard input for test-bench mode (not saved to preferences file)
 
 	bool WiC64;					// Emulate a WiC64 on the user port (not saved to preferences file)
-	std::string WiC64Share;		// Host folder the WiC64 offers as its file share (not saved to preferences file)
+	std::string WiC64Flash;		// Host folder for the WiC64's internal flash (not saved to preferences file)
+	std::string WiC64Share;		// Host folders for its network shares, "name=folder;..." (not saved to preferences file)
 
 	std::string TestScreenshotPath;	// Path for screenshot to be saved on exit in test-bench mode (not saved to preferences file)
 };

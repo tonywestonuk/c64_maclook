@@ -325,7 +325,8 @@ push_button:
 ; ---------------------------------------------------------------------
 ; Word wrapped text: q3 = text, wr_x/wr_y = top-left, wr_w = width,
 ; wr_lh = line height, font.  '|' and RETURN break lines.
-; Leaves wr_cx/wr_cy = position just after the last character.
+; Leaves wr_cx/wr_cy = position just after the last character, and q3
+; at the start of the last line.
 ; (wr_x .. wr_draw are in public.asm)
 ; ---------------------------------------------------------------------
 wr_pos: !byte 0
@@ -432,13 +433,21 @@ wrap_draw:
         lda wr_skip
         beq +
         iny                     ; skip the break character
-+       sty wr_pos
++       tya                     ; q3 moves on to the next line, so texts
+        clc                     ; can be longer than 256 characters
+        adc q3
+        sta q3
+        bcc +
+        inc q3+1
++       lda #0
+        sta wr_pos
         lda wr_y
         clc
         adc wr_lh
         sta wr_y
         bcs .done
         ; a text ending in a line break puts the caret on the next line
+        ldy #0
         lda (q3),y
         beq +
         jmp .line

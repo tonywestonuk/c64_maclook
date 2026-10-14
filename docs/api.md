@@ -52,7 +52,7 @@ A, X, Y and the zero page registers below.
 | `$084c` | `text_width` | twidth = width of tstr in font |
 | `$084f` | `draw_centred_at` | A/Y = string, X = y in the content: centred across it |
 | `$0852` | `draw_icon` | icon iptr at tx,ty, iflags = ICON_ |
-| `$0855` | `wrap_draw` | text q3 word wrapped at wr_x,wr_y, wr_w wide ('|' = new line) |
+| `$0855` | `wrap_draw` | text q3 word wrapped at wr_x,wr_y, wr_w wide ('|' = new line); moves q3 |
 
 ### The pointer
 
@@ -159,7 +159,7 @@ A, X, Y and the zero page registers below.
 
 | Address | Call | |
 |---|---|---|
-| `$090f` | `fs_info` | total KB, free KB and the share's name to (fs_rptr) |
+| `$090f` | `fs_info` | A = volume: total KB, free KB and its name to (fs_rptr) |
 | `$0912` | `fs_list` | folder q0: entries from fs_first, at most fs_max, to (fs_rptr) |
 | `$0915` | `fs_read` | fs_len bytes at fs_off of file q0 to (fs_rptr) |
 | `$0918` | `fs_load` | program file q0 to the address in its first two bytes |
@@ -168,7 +168,10 @@ A, X, Y and the zero page registers below.
 | `$0921` | `fs_rename` | rename or move q0 to q1 |
 | `$0924` | `fs_copy` | copy file q0 to q1 |
 | `$0927` | `fs_mkdir` | new folder q0 |
-| `$092a` | `fs_stat` | kind (1) and size (4) of q0 to (fs_rptr) |
+| `$092a` | `fs_stat` | kind (1), size (4) and date (2) of q0 to (fs_rptr) |
+| `$092d` | `fs_volumes` | the volumes: number, kind, connected, KB, free KB, name |
+| `$0930` | `fs_connect` | A = volume: connect a network share |
+| `$0933` | `fs_disconnect` | A = volume: disconnect it |
 
 ## Public data
 

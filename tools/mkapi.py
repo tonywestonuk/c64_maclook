@@ -79,7 +79,7 @@ for line in open('src/zp.asm'):
 
 # --- constants ------------------------------------------------------
 PREFIXES = ('WF_', 'P_', 'M_', 'CL_', 'ICON_', 'B_', 'MF_', 'EDIT_', 'MOD_',
-            'DLG_', 'CUR_', 'K_')
+            'DLG_', 'CUR_', 'K_', 'FS_', 'FSW_')
 NAMES = ['MAXWIN', 'NUM_MENUS', 'TITLE_H', 'SB_W', 'W_H', 'ACT_NONE', 'SYS_ACT',
          'APP_BASE', 'PAGE_BASE', 'DESK_Y1', 'SPRPTR', 'NUM_PATTERNS', 'JUMP_TABLE']
 # the BASIC ROM's floating point entry points (fp.asm)

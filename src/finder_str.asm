@@ -78,29 +78,36 @@ str_i_startup:   !text "Set Startup", $13, 0
 str_i_restart:   !text "Restart", 0
 str_i_shutdown:  !text "Shut Down", 0
 
-; object names
-str_o_disk:    !text "System Disk", 0
+; names and words
 str_o_trash:   !text "Trash", 0
-str_o_sysfold: !text "System Folder", 0
-str_o_brickles: !text "Brickles", 0
-str_o_sheet: !text "Spreadsheet", 0
-str_o_shapes: !text "Shapes", 0
-str_o_readme:  !text "Read Me", 0
-str_o_empty:   !text "Empty Folder", 0
-str_o_system:  !text "System", 0
-str_o_finder:  !text "Finder", 0
-str_o_clipf:   !text "Clipboard File", 0
-str_o_scrapf:  !text "Scrapbook File", 0
+str_trashdir:  !text ".Trash", 0
+str_dotfinder: !text ".finder", 0
+str_newfolder: !text "Empty Folder", 0
+str_copyof:    !text "Copy of ", 0
+str_space:     !text " ", 0
+str_dash:      !text "--", 0
+str_k:         !text "K", 0
+str_months:    !text " Jan", 0, " Feb", 0, " Mar", 0, " Apr", 0, " May", 0, " Jun", 0
+               !text " Jul", 0, " Aug", 0, " Sep", 0, " Oct", 0, " Nov", 0, " Dec", 0
 
 str_items:   !text " items", 0
 str_item:    !text " item", 0
-str_indisk:  !text " blocks used", 0
-str_avail:   !text " blocks free", 0
-str_untitled: !text "untitled", 0
-str_copyof:  !text "Copy of ", 0
+str_indisk:  !text " in disk", 0
+str_avail:   !text " available", 0
 
 str_noeject:  !text "The startup disk can", $27, "t be ejected.", 0
 str_sysfile:  !text "That file is used by the system, and can", $27, "t be opened.", 0
+str_noapp:    !text "No application can open this document.", 0
+str_toolong:  !text "That path is too long.", 0
+str_nocopyfolder: !text "Folders can", $27, "t be copied to another disk.", 0
+str_e_notfound: !text "That item could not be found.", 0
+str_e_exists:   !text "That name is already taken.", 0
+str_e_notempty: !text "That folder is not empty.", 0
+str_e_noshare:  !text "That disk isn", $27, "t available.", 0
+str_e_full:     !text "The disk is full.", 0
+str_e_denied:   !text "The disk is locked.", 0
+str_e_nowic64:  !text "The WiC64 is not answering.", 0
+str_e_other:    !text "The operation could not be completed.", 0
 str_erase:    !text "The startup disk can", $27, "t be erased.", 0
 str_startup:  !text "System Disk is already the startup disk.", 0
 str_about1: !text "Commodore 64 Finder", 0
@@ -113,41 +120,17 @@ str_info:     !text "Info", 0
 str_kind:     !text "Kind:", 0
 str_size:     !text "Size:", 0
 str_where:    !text "Where:", 0
-str_created:  !text "Created:", 0
 str_modified: !text "Modified:", 0
-str_locked:   !text "Locked", 0
-str_kondisk:  !text " blocks", 0
 str_desktop:  !text "Desktop", 0
 
-str_k_disk:   !text "disk", 0
+str_k_disk:   !text "startup disk", 0
+str_k_share:  !text "network share", 0
 str_k_trash:  !text "trash", 0
 str_k_folder: !text "folder", 0
-str_k_app:    !text "desk accessory", 0
+str_k_app:    !text "application", 0
 str_k_doc:    !text "document", 0
-str_k_sys:    !text "system document", 0
-
-str_d0: !text "Thu, Apr 2, 1987", 0
-str_d1: !text "Fri, Apr 3, 1987", 0
-str_d2: !text "Mon, Jun 1, 1987", 0
-str_d3: !text "Tue, Jul 14, 1987", 0
-str_d4: !text "Mon, Oct 5, 1987", 0
-str_d5: !text "Wed, Sep 9, 1987", 0
-str_d6: !text "Mon, Oct 5, 1987", 0
+str_k_text:   !text "text document", 0
+str_k_sys:    !text "system file", 0
 
 str_clipboard: !text "Clipboard", 0
 str_clipempty: !text "The Clipboard is empty.", 0
-
-str_readme_text:
-        !text "Welcome to the Commodore 64 desktop!|"
-        !text "|"
-        !text "A tribute to the 1987 Macintosh Finder, running on a "
-        !text "Commodore 64 in 2 colour hires mode.|"
-        !text "|"
-        !text "- Point with the mouse (or a joystick in port 2).|"
-        !text "- Double-click icons to open them.|"
-        !text "- Drag windows by the title bar, resize with the grow box.|"
-        !text "- Drag icons to folders, or to the Trash.|"
-        !text "- Click an icon and type to rename it.|"
-        !text "- Desk accessories live in the Apple menu.|"
-        !text "- The Command key is C= (Alt on a PC keyboard).", 0
-

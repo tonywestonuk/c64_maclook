@@ -12,7 +12,7 @@
 756 mouse 160 150
 768 down
 773 up
-803 mouse 167 70
+803 mouse 123 105
 815 down
 819 up
 831 down
@@ -30,7 +30,7 @@
 1977 up
 1989 down
 1993 up
-2113 mouse 111 70
+2113 mouse 55 69
 2125 down
 2129 up
 2141 down

@@ -2,9 +2,10 @@
  *  WiC64.h - WiC64 network adapter on the user port
  *
  *  Emulates a WiC64 (an ESP32 on the user port) speaking the WiC64
- *  transfer protocol, with a few of its standard commands and the network
- *  file service of the C64 Mac-look desktop (docs/fileservice.md). The
- *  "share" is a folder on the host.
+ *  transfer protocol, with a few of its standard commands and the file
+ *  service of the C64 Mac-look desktop (docs/fileservice.md).  Its
+ *  volumes are folders on the host: the internal flash (volume 0) and
+ *  network shares (1 and up).
  */
 
 #ifndef WIC64_H
@@ -39,7 +40,9 @@ private:
 	void fail(uint8_t status, const std::string & message);
 
 	// Commands
-	void cmd_info();
+	void cmd_info(const uint8_t * p, size_t n);
+	void cmd_volumes();
+	void cmd_connect(const uint8_t * p, size_t n, bool connect);
 	void cmd_list(const uint8_t * p, size_t n);
 	void cmd_read(const uint8_t * p, size_t n);
 	void cmd_write(const uint8_t * p, size_t n);
@@ -48,12 +51,20 @@ private:
 	void cmd_mkdir(const uint8_t * p, size_t n);
 	void cmd_stat(const uint8_t * p, size_t n);
 
-	bool host_path(const std::string & rel, std::string & out);
+	bool host_path(const std::string & rel, std::string & out, int * vol = nullptr);
+	bool volume_ready(int vol);
 
 	MOS6526_2 * the_cia;
 
 	bool enabled = false;
-	std::string share;				// Host folder serving as the share
+
+	struct Volume {
+		std::string name;			// As the C64 shows it
+		std::string path;			// Host folder
+		bool network;				// A share (else the internal flash)
+		bool connected;
+	};
+	std::vector<Volume> volumes;
 
 	enum { IDLE, RECEIVING, RESPONDING } state = IDLE;
 	bool pa2 = true;

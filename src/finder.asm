@@ -1,44 +1,43 @@
 ; =====================================================================
-; finder.asm - the Finder: objects, folder windows, desktop icons,
-; event loop, menu commands
+; finder.asm - the Finder: the WiC64's volumes (its flash, the startup
+; disk, and network shares), their folders and files, the desktop, and
+; the menu commands
+;
+; Objects are the volumes and the Trash on the desktop, and the entries
+; of every open folder, listed from the WiC64 when the folder's window
+; opens and dropped when it closes.  Each object knows its parent, so its
+; path ("1:Documents/Notes.txt") is built by walking up to its volume.
 ; =====================================================================
 
-MAXOBJ  = 24
+MAXOBJ  = 32
+NAMELEN = 32            ; bytes per name: 31 characters and the end
 DESKTOP = $fe
 NOOBJ   = $ff
 IB_H    = 14            ; info bar height in folder windows
-CELL_W  = 56
+CELL_W  = 68
 CELL_H  = 36
+MAXVOL  = 8
 
-T_DISK   = 0
-T_TRASH  = 1
-T_FOLDER = 2
-T_APP    = 3
-T_DOC    = 4
-T_SYS    = 5
-
-APP_README  = 0
-APP_CLIP    = 1
-APP_NONE    = 2
-APP_BRICKLES = 3
-APP_SHEET   = 4
-APP_SHAPES  = 5
+; kinds of object: containers first
+T_DISK   = 0            ; the startup disk (the WiC64's flash)
+T_SHARE  = 1            ; a network share
+T_TRASH  = 2
+T_FOLDER = 3
+T_APP    = 4            ; .app
+T_DOC    = 5            ; other files
+T_TEXT   = 6            ; .txt
+T_SYS    = 7            ; .sys, .ovl: parts of the System
 
 IC_DISK = 0
-IC_TRASH = 1
-IC_TRASHFULL = 2
-IC_FOLDER = 3
-IC_DOC = 4
-IC_SYSTEM = 5
-IC_FINDER = 6
-IC_CLIPBOARD = 7
-IC_SCRAPBOOK = 8
-IC_BRICKLES = 9
-IC_SHEET = 10
-IC_SHAPES = 11
+IC_SHARE = 1
+IC_TRASH = 2
+IC_TRASHFULL = 3
+IC_FOLDER = 4
+IC_DOC = 5
+IC_SYSTEM = 6
+IC_APP = 7
 
-OBJ_DISK  = 0
-OBJ_TRASH = 1
+OBJ_TRASH = 0           ; the Trash; the volumes follow it
 
 CL_FOLDER  = CL_APPBASE+0
 CL_INFO    = CL_APPBASE+1
@@ -50,60 +49,26 @@ app_classes:            ; draw, click, key, idle, close, edit, resize, scroll
         !word text_draw, nop_method, nop_method, nop_method, text_close, nop_method, nop_method, nop_method
 
 icon_table:
-        !word icon_disk, icon_trash, icon_trashfull, icon_folder, icon_doc
-        !word icon_system, icon_finder, icon_clipboard, icon_scrapbook
-        !word icon_brickles, icon_sheet, icon_paint
+        !word icon_disk, icon_share, icon_trash, icon_trashfull, icon_folder
+        !word icon_doc, icon_system, icon_app
+type_icon:              ; the icon of each kind
+        !byte IC_DISK, IC_SHARE, IC_TRASH, IC_FOLDER, IC_APP, IC_DOC, IC_DOC, IC_SYSTEM
 
-; ---------------------------------------------------------------------
-; Object table
-; ---------------------------------------------------------------------
-o_names:  !fill MAXOBJ*16
-o_parent: !fill MAXOBJ
-o_oldpar: !fill MAXOBJ
-o_xl:     !fill MAXOBJ
-o_xh:     !fill MAXOBJ
-o_y:      !fill MAXOBJ
-o_icon:   !fill MAXOBJ
-o_type:   !fill MAXOBJ
-o_app:    !fill MAXOBJ
-o_size:   !fill MAXOBJ
-o_win:    !fill MAXOBJ
-o_flags:  !fill MAXOBJ
-o_date:   !fill MAXOBJ
-o_locked: !fill MAXOBJ
+; file kinds by extension (the Finder hides these extensions)
+ext_names:
+        !text "app", 0, "sys", 0, "ovl", 0, "txt", 0, "sheet", 0, 0
+ext_types:
+        !byte T_APP, T_SYS, T_SYS, T_TEXT, T_DOC
 
 OF_SEL = 1
 OF_HILITE = 2
-
-; name, parent, x, y, icon, type, app, size (1541 blocks), date
-!macro obj .name, .par, .x, .y, .icon, .type, .app, .size, .date {
-        !word .name
-        !byte .par
-        !word .x
-        !byte .y, .icon, .type, .app, .size, .date
-}
-OBJREC = 11
-obj_init:
-        +obj str_o_disk,    DESKTOP, 280, 16, IC_DISK, T_DISK, APP_NONE, 0, 0
-        +obj str_o_trash,   DESKTOP, 284, 158, IC_TRASH, T_TRASH, APP_NONE, 0, 0
-        +obj str_o_sysfold, OBJ_DISK, 18, 4, IC_FOLDER, T_FOLDER, APP_NONE, 0, 1
-        +obj str_o_brickles, OBJ_DISK, 74, 4, IC_BRICKLES, T_APP, APP_BRICKLES, 15, 6
-        +obj str_o_sheet,   OBJ_DISK, 130, 4, IC_SHEET, T_APP, APP_SHEET, 23, 6
-        +obj str_o_readme,  OBJ_DISK, 186, 4, IC_DOC, T_DOC, APP_README, 6, 4
-        +obj str_o_empty,   OBJ_DISK, 18, 40, IC_FOLDER, T_FOLDER, APP_NONE, 0, 4
-        +obj str_o_shapes,  OBJ_DISK, 74, 40, IC_SHAPES, T_APP, APP_SHAPES, 7, 6
-        +obj str_o_system,  2, 18, 4, IC_SYSTEM, T_SYS, APP_NONE, 70, 0
-        +obj str_o_finder,  2, 74, 4, IC_FINDER, T_SYS, APP_NONE, 48, 0
-        +obj str_o_clipf,   2, 130, 4, IC_CLIPBOARD, T_DOC, APP_CLIP, 2, 5
-        +obj str_o_scrapf,  2, 18, 40, IC_SCRAPBOOK, T_SYS, APP_NONE, 40, 5
-NUM_INIT_OBJ = (* - obj_init) / OBJREC
 
 sel_obj:   !byte NOOBJ
 last_obj:  !byte NOOBJ   ; object of the previous click (double clicks)
 renaming:  !byte 0
 
 ; ---------------------------------------------------------------------
-; finder_init: objects to their initial state
+; finder_init: the Trash and the volumes
 ; ---------------------------------------------------------------------
 !zone finder_init
 finder_init:
@@ -111,72 +76,89 @@ finder_init:
 -       lda #NOOBJ
         sta o_parent,x
         sta o_win,x
+        sta o_oldpar,x
         lda #0
         sta o_flags,x
-        sta o_locked,x
         dex
         bpl -
-        lda #<obj_init
-        sta q2
-        lda #>obj_init
-        sta q2+1
-        ldx #0
-.o:     stx u0
-        ldy #0
-        lda (q2),y
-        sta q0
-        iny
-        lda (q2),y
-        sta q0+1
-        jsr obj_name_ptr        ; q1 = name slot of X
-        jsr strcpy
-        ldx u0
-        ldy #2
-        lda (q2),y
-        sta o_parent,x
-        iny
-        lda (q2),y
-        sta o_xl,x
-        iny
-        lda (q2),y
-        sta o_xh,x
-        iny
-        lda (q2),y
-        sta o_y,x
-        iny
-        lda (q2),y
-        sta o_icon,x
-        iny
-        lda (q2),y
-        sta o_type,x
-        iny
-        lda (q2),y
-        sta o_app,x
-        iny
-        lda (q2),y
-        sta o_size,x
-        iny
-        lda (q2),y
-        sta o_date,x
-        clc
-        lda q2
-        adc #OBJREC
-        sta q2
-        bcc +
-        inc q2+1
-+       inx
-        cpx #NUM_INIT_OBJ
-        bne .o
         lda #NOOBJ
         sta sel_obj
         sta last_obj
         lda #0
         sta renaming
-        rts
+        ; the Trash
+        ldx #OBJ_TRASH
+        lda #<str_o_trash
+        ldy #>str_o_trash
+        jsr obj_set_name
+        ldx #OBJ_TRASH
+        lda #DESKTOP
+        sta o_parent,x
+        lda #T_TRASH
+        sta o_type,x
+        lda #IC_TRASH
+        sta o_icon,x
+        lda #0
+        sta o_dl,x
+        sta o_dh,x
+        lda #<284
+        sta o_xl,x
+        lda #>284
+        sta o_xh,x
+        lda #158
+        sta o_y,x
+        ; the volumes, down the right
+        jsr vol_query
+        ldx #0
+.v:     cpx vol_n
+        bcs .done
+        stx u5
+        jsr new_obj
+        bcs .done
+        ldy u5
+        txa
+        sta vol_obj,y
+        tya
+        sta o_vol,x
+        lda #DESKTOP
+        sta o_parent,x
+        lda vol_kind,y          ; 0 flash, 1 network
+        sta o_type,x
+        tay
+        lda type_icon,y
+        sta o_icon,x
+        lda #<280
+        sta o_xl,x
+        lda #>280
+        sta o_xh,x
+        lda u5                  ; y = 16 + 36 * number
+        asl
+        asl
+        asl
+        sta t0
+        asl
+        asl
+        clc
+        adc t0
+        adc #16
+        sta o_y,x
+        lda u5                  ; the name, from the volume list
+        jsr vol_name_ptr
+        ldx u5
+        lda vol_obj,x
+        tax
+        lda q0
+        ldy q0+1
+        jsr obj_set_name
+        ldx u5
+        inx
+        jmp .v
+.done:  jmp count_trash
 
 ; X = object -> q1 = its name buffer (X preserved)
 obj_name_ptr:
-        txa
+        txa                     ; X * 32
+        asl
         asl
         asl
         asl
@@ -184,37 +166,43 @@ obj_name_ptr:
         clc
         adc #<o_names
         sta q1
-        lda #>o_names
-        adc #0
-        sta q1+1
         txa
         lsr
         lsr
         lsr
-        lsr
-        clc
-        adc q1+1
+        adc #>o_names
         sta q1+1
         rts
 
-; X = object -> carry set if it is a container
+; X = object, A/Y = name: copy it (at most 31 characters)
+obj_set_name:
+        sta q0
+        sty q0+1
+        jsr obj_name_ptr
+        ldy #0
+-       lda (q0),y
+        sta (q1),y
+        beq +
+        iny
+        cpy #NAMELEN-1
+        bne -
+        lda #0
+        sta (q1),y
++       rts
+
+; X = object -> carry clear if it is a container (volume, Trash, folder)
 is_container:
         lda o_type,x
         cmp #T_FOLDER+1
-        rts                     ; carry clear for disk/trash/folder
+        rts
 
-; does the trash hold anything?  Z clear = yes
+; does the trash hold anything?  A = 1 (Z clear) if so
 trash_full:
-        ldx #MAXOBJ-1
--       lda o_parent,x
-        cmp #OBJ_TRASH
+        lda trash_n
+        ora trash_n+1
         beq +
-        dex
-        bpl -
-        lda #0
-        rts
-+       lda #1
-        rts
+        lda #1
++       rts
 
 ; icon pointer for object X -> iptr
 obj_icon_ptr:
@@ -233,6 +221,889 @@ obj_icon_ptr:
         lda icon_table+1,y
         sta iptr+1
         rts
+
+; ---------------------------------------------------------------------
+; Names: the extension of a known kind of file is hidden
+; ---------------------------------------------------------------------
+; ext_of: name at (q1) -> A = kind (T_DOC if not known), Y = where its
+; extension's dot is (the length of the name if there is none), carry
+; clear if the extension is a known one (and so hidden).  Uses X, t5-t7.
+!zone ext_of
+ext_of:
+        lda #$ff
+        sta t6                  ; the last dot
+        ldy #0
+-       lda (q1),y
+        beq +
+        cmp #"."
+        bne ++
+        sty t6
+++      iny
+        bne -
++       sty t7                  ; length
+        ldy t6
+        cpy #$ff
+        beq .none
+        ldx #0                  ; compare the extension with each known one
+        stx t5                  ; (kind number)
+.ext:   lda ext_names,x
+        beq .none
+        ldy t6
+.ch:    iny
+        lda (q1),y
+        ora #$20                ; (lower case)
+        cmp ext_names,x
+        bne .skip
+        inx
+        lda ext_names,x
+        bne .ch
+        iny                     ; the name ends here too?
+        lda (q1),y
+        bne .skip2
+        ldx t5
+        lda ext_types,x
+        ldy t6
+        clc
+        rts
+.skip:  inx                     ; to the next known extension
+        lda ext_names,x
+        bne .skip
+.skip2: inx
+        inc t5
+        jmp .ext
+.none:  lda #T_DOC
+        ldy t7
+        sec
+        rts
+
+; obj_label: X = object -> q1 = the name it shows (q1 points at
+; label_buf, or at the name being typed while it is renamed)
+!zone obj_label
+obj_label:
+        lda renaming
+        beq +
+        cpx sel_obj
+        bne +
+        lda #<rn_buf
+        sta q1
+        lda #>rn_buf
+        sta q1+1
+        rts
++       stx t4
+        jsr obj_name_ptr
+        lda o_type,x            ; only files have extensions to hide
+        cmp #T_APP
+        bcc .all
+        jsr ext_of
+        bcs .all
+        sty t7                  ; copy up to the dot
+.copy:  ldy #0
+-       cpy t7
+        beq +
+        lda (q1),y
+        sta label_buf,y
+        iny
+        bne -
++       lda #0
+        sta label_buf,y
+        lda #<label_buf
+        sta q1
+        lda #>label_buf
+        sta q1+1
+        ldx t4
+        rts
+.all:   ldy #0                  ; the whole name
+-       lda (q1),y
+        beq +
+        iny
+        bne -
++       sty t7
+        jmp .copy
+
+; ---------------------------------------------------------------------
+; Volumes
+; ---------------------------------------------------------------------
+; vol_query: the WiC64's volume list -> vol_n, vol_kind, vol_conn,
+; vol_total, vol_free (the names stay in list_buf for vol_name_ptr)
+!zone vol_query
+vol_query:
+        lda #<list_buf
+        sta fs_rptr
+        lda #>list_buf
+        sta fs_rptr+1
+        lda #<LISTBUF_SIZE
+        sta fs_rmax
+        lda #>LISTBUF_SIZE
+        sta fs_rmax+1
+        jsr fs_volumes
+        bcc +
+        lda #0                  ; no WiC64: no volumes
+        sta vol_n
+        rts
++       lda list_buf
+        cmp #MAXVOL+1
+        bcc +
+        lda #MAXVOL
++       sta vol_n
+        lda #<(list_buf+1)
+        sta q0
+        lda #>(list_buf+1)
+        sta q0+1
+        ldx #0
+.v:     cpx vol_n
+        bcs .out
+        ldy #1
+        lda (q0),y
+        sta vol_kind,x
+        iny
+        lda (q0),y
+        sta vol_conn,x
+        txa                     ; total and free KB
+        asl
+        asl
+        sta t0
+        ldy #3
+-       tya
+        pha
+        lda (q0),y
+        ldy t0
+        sta vol_total,y
+        pla
+        tay
+        iny
+        inc t0
+        cpy #7
+        bne -
+        lda t0
+        sec
+        sbc #4
+        sta t0
+-       tya
+        pha
+        lda (q0),y
+        ldy t0
+        sta vol_free,y
+        pla
+        tay
+        iny
+        inc t0
+        cpy #11
+        bne -
+        lda (q0),y              ; name length: to the next entry
+        clc
+        adc #12
+        adc q0
+        sta q0
+        bcc +
+        inc q0+1
++       inx
+        jmp .v
+.out:   rts
+
+; vol_name_ptr: A = volume -> q0 = its name in list_buf (a copy with an
+; end, in vol_namebuf)
+!zone vol_name_ptr
+vol_name_ptr:
+        sta t5
+        lda #<(list_buf+1)
+        sta q0
+        lda #>(list_buf+1)
+        sta q0+1
+-       lda t5
+        beq +
+        ldy #11
+        lda (q0),y
+        clc
+        adc #12
+        adc q0
+        sta q0
+        bcc ++
+        inc q0+1
+++      dec t5
+        jmp -
++       ldy #11                 ; copy the name
+        lda (q0),y
+        cmp #NAMELEN
+        bcc +
+        lda #NAMELEN-1
++       sta t5
+        ldx #0
+-       cpx t5
+        beq +
+        iny
+        lda (q0),y
+        sta vol_namebuf,x
+        inx
+        bne -
++       lda #0
+        sta vol_namebuf,x
+        lda #<vol_namebuf
+        sta q0
+        lda #>vol_namebuf
+        sta q0+1
+        rts
+
+; count_trash: trash_n = how many things are in the volumes' .Trash folders
+!zone count_trash
+count_trash:
+        lda #0
+        sta trash_n
+        sta trash_n+1
+        ldx #0
+.v:     cpx vol_n
+        bcs .out
+        lda vol_conn,x
+        beq .n
+        stx u5
+        txa
+        jsr trash_path          ; path_a = "n:.Trash"
+        jsr list_total
+        clc
+        adc trash_n
+        sta trash_n
+        txa
+        adc trash_n+1
+        sta trash_n+1
+        ldx u5
+.n:     inx
+        jmp .v
+.out:   rts
+
+; trash_path: A = volume -> path_a = "n:.Trash"
+trash_path:
+        ora #"0"
+        sta path_a
+        lda #":"
+        sta path_a+1
+        ldx #0
+-       lda str_trashdir,x
+        sta path_a+2,x
+        beq +
+        inx
+        bne -
++       rts
+
+; list_total: entries in the folder path_a -> A/X (0 if there is none)
+list_total:
+        lda #0
+        sta fs_first
+        sta fs_first+1
+        sta fs_max
+        jsr list_path_a
+        bcs +
+        lda list_buf
+        ldx list_buf+1
+        rts
++       lda #0
+        tax
+        rts
+
+; fs_list of path_a into list_buf
+list_path_a:
+        lda #<path_a
+        sta q0
+        lda #>path_a
+        sta q0+1
+        lda #<list_buf
+        sta fs_rptr
+        lda #>list_buf
+        sta fs_rptr+1
+        lda #<LISTBUF_SIZE
+        sta fs_rmax
+        lda #>LISTBUF_SIZE
+        sta fs_rmax+1
+        jmp fs_list
+
+; ---------------------------------------------------------------------
+; Paths
+; ---------------------------------------------------------------------
+; obj_path: X = object -> path_a = its path ("n:" for a volume, else
+; "n:name/name/..."; things in the Trash are in "n:.Trash/").  Carry set
+; if it is too long.  X preserved.
+PATHMAX = 120
+op_chain: !fill 12
+op_n:    !byte 0
+op_x:    !byte 0
+!zone obj_path
+obj_path:
+        stx op_x
+        lda #0
+        sta op_n
+        sta t7                  ; in the Trash?
+.up:    ldy op_n
+        cpy #12
+        bcc .bf532
+        jmp .long
+.bf532:
+        txa
+        sta op_chain,y
+        inc op_n
+        lda o_type,x
+        cmp #T_TRASH            ; a volume: the root
+        bcc .root
+        lda o_parent,x
+        cmp #OBJ_TRASH
+        beq .trash
+        cmp #MAXOBJ
+        bcs .long
+        tax
+        jmp .up
+.trash: inc t7
+.root:  ldy op_n                ; the volume's number
+        dey
+        ldx op_chain,y
+        lda o_vol,x
+        ora #"0"
+        sta path_a
+        lda #":"
+        sta path_a+1
+        ldx #2
+        lda t7
+        beq +
+        ldy #0
+-       lda str_trashdir,y
+        beq +
+        sta path_a,x
+        inx
+        iny
+        bne -
++       stx t6                  ; the names, from the top down
+        ldy op_n
+        lda t7                  ; (a volume at the top has no name in it)
+        bne .n
+        dey
+.n:     dey
+        bmi .end
+        sty t5
+        ldx op_chain,y
+        jsr obj_name_ptr
+        ldx t6
+        lda path_a-1,x          ; "/" unless just after "n:"
+        cmp #":"
+        beq +
+        lda #"/"
+        sta path_a,x
+        inx
++       ldy #0
+-       lda (q1),y
+        beq +
+        cpx #PATHMAX
+        bcs .long
+        sta path_a,x
+        inx
+        iny
+        bne -
++       stx t6
+        ldy t5
+        jmp .n
+.end:   ldx t6
+        lda #0
+        sta path_a,x
+        ldx op_x
+        clc
+        rts
+.long:  ldx op_x
+        sec
+        rts
+
+; path_add: path_a += "/" + the name at (q0) (no "/" just after "n:")
+!zone path_add
+path_add:
+        ldx #0
+-       lda path_a,x
+        beq +
+        inx
+        bne -
++       lda path_a-1,x
+        cmp #":"
+        beq +
+        lda #"/"
+        sta path_a,x
+        inx
++       ldy #0
+-       lda (q0),y
+        sta path_a,x
+        beq +
+        inx
+        iny
+        cpx #PATHMAX
+        bcc -
+        lda #0
+        sta path_a,x
++       rts
+
+; path_a -> path_b
+path_save:
+        ldx #0
+-       lda path_a,x
+        sta path_b,x
+        beq +
+        inx
+        bne -
++       rts
+
+; ---------------------------------------------------------------------
+; Loading a container's entries
+; ---------------------------------------------------------------------
+; load_children: X = container (a volume or a folder): its entries
+; become objects (those that are objects already stay), placed where
+; its .finder file says, or in free places.  The Trash lists the .Trash
+; folder of every connected volume.
+lc_c:    !byte 0
+lc_vol:  !byte 0
+lc_first: !word 0
+lc_ptr:  !word 0
+lc_i:    !byte 0
+!zone load_children
+load_children:
+        stx lc_c
+        cpx #OBJ_TRASH
+        bne +
+        jmp load_trash
++       lda o_vol,x
+        sta lc_vol
+        jsr obj_path
+        bcs .out
+        jsr read_positions
+        jsr lc_list
+        jmp place_new
+.out:   rts
+
+load_trash:
+        lda #0
+        sta pos_len
+        sta pos_len+1
+        ldx #0
+-       cpx vol_n
+        bcs +
+        stx lc_vol
+        lda vol_conn,x
+        beq ++
+        txa
+        jsr trash_path
+        jsr lc_list
+++      ldx lc_vol
+        inx
+        bne -
++       jmp place_new
+
+; list path_a into objects, children of lc_c on volume lc_vol
+!zone lc_list
+lc_list:
+        lda #0
+        sta lc_first
+        sta lc_first+1
+.chunk: lda lc_first
+        sta fs_first
+        lda lc_first+1
+        sta fs_first+1
+        lda #8
+        sta fs_max
+        jsr list_path_a
+        bcs .out
+        lda list_buf+2          ; count
+        beq .out
+        sta lc_i
+        lda #<(list_buf+3)
+        sta lc_ptr
+        lda #>(list_buf+3)
+        sta lc_ptr+1
+.ent:   jsr lc_entry
+        bcs .out                ; no room for more objects
+        lda lc_ptr              ; next entry: 8 + name length
+        sta q0
+        lda lc_ptr+1
+        sta q0+1
+        ldy #7
+        lda (q0),y
+        clc
+        adc #8
+        adc lc_ptr
+        sta lc_ptr
+        bcc +
+        inc lc_ptr+1
++       inc lc_first
+        bne +
+        inc lc_first+1
++       dec lc_i
+        bne .ent
+        lda lc_first            ; more to come?
+        cmp list_buf
+        lda lc_first+1
+        sbc list_buf+1
+        bcc .chunk
+.out:   rts
+
+; the entry at (lc_ptr) -> an object.  Carry set if there is no room.
+!zone lc_entry
+lc_entry:
+        lda lc_ptr
+        sta q2
+        lda lc_ptr+1
+        sta q2+1
+        ldy #7                  ; its name, with an end, in label_buf
+        lda (q2),y
+        cmp #NAMELEN
+        bcc +
+        lda #NAMELEN-1
++       sta t5
+        ldx #0
+-       cpx t5
+        beq +
+        txa
+        clc
+        adc #8
+        tay
+        lda (q2),y
+        sta label_buf,x
+        inx
+        bne -
++       lda #0
+        sta label_buf,x
+        jsr find_child          ; an object already?
+        cpx #NOOBJ
+        beq +
+        clc
+        rts
++       jsr new_obj
+        bcc +
+        rts
++       stx u4
+        lda lc_c
+        sta o_parent,x
+        lda lc_vol
+        sta o_vol,x
+        lda #<label_buf
+        ldy #>label_buf
+        jsr obj_set_name
+        ldx u4
+        ldy #0                  ; folder or file
+        lda (q2),y
+        beq .file
+        lda #T_FOLDER
+        bne .kind
+.file:  jsr obj_name_ptr
+        jsr ext_of
+        ldx u4
+.kind:  sta o_type,x
+        tay
+        lda type_icon,y
+        sta o_icon,x
+        ; size in K, rounded up, at most 65535: bytes 1-4 of the entry
+        ldy #2                  ; K = size >> 10
+        lda (q2),y
+        sta t0
+        iny
+        lda (q2),y
+        sta t1
+        iny
+        lda (q2),y
+        sta t2
+        lsr t2
+        ror t1
+        ror t0
+        lsr t2
+        ror t1
+        ror t0
+        ldy #1                  ; something left over: one more
+        lda (q2),y
+        bne .up
+        iny
+        lda (q2),y
+        and #3
+        beq .k
+.up:    inc t0
+        bne .k
+        inc t1
+        bne .k
+        inc t2
+.k:     lda t2                  ; too big: 65535
+        beq +
+        lda #$ff
+        sta t0
+        sta t1
++       lda t0
+        sta o_kl,x
+        lda t1
+        sta o_kh,x
+        ldy #5                  ; date
+        lda (q2),y
+        sta o_dl,x
+        iny
+        lda (q2),y
+        sta o_dh,x
+        lda #$ff                ; not placed yet
+        sta o_y,x
+        lda #0
+        sta o_xl,x
+        sta o_xh,x
+        jsr obj_name_ptr        ; a place from .finder?
+        lda q1
+        sta q0
+        lda q1+1
+        sta q0+1
+        jsr find_position
+        bcs +
+        ldx u4
+        lda fs_x
+        sta o_xl,x
+        lda fs_x+1
+        sta o_xh,x
+        lda fs_y
+        sta o_y,x
++       clc
+        rts
+
+; find_child: the child of lc_c on lc_vol named label_buf -> X (NOOBJ)
+!zone find_child
+find_child:
+        ldx #MAXOBJ-1
+.l:     lda o_parent,x
+        cmp lc_c
+        bne .n
+        lda o_vol,x
+        cmp lc_vol
+        bne .n
+        jsr obj_name_ptr
+        ldy #0
+-       lda (q1),y
+        cmp label_buf,y
+        bne .n
+        cmp #0
+        beq .yes
+        iny
+        bne -
+.n:     dex
+        bpl .l
+        ldx #NOOBJ
+.yes:   rts
+
+; place_new: children of lc_c without a place go to free places
+!zone place_new
+place_new:
+        ldx #0
+.l:     lda o_parent,x
+        cmp lc_c
+        bne .n
+        lda o_y,x
+        cmp #$ff
+        bne .n
+        stx u4
+        ldx lc_c
+        jsr free_slot
+        ldx u4
+        lda fs_x
+        sta o_xl,x
+        lda fs_x+1
+        sta o_xh,x
+        lda fs_y
+        sta o_y,x
+.n:     inx
+        cpx #MAXOBJ
+        bne .l
+        rts
+
+; ---------------------------------------------------------------------
+; Where icons are: a hidden ".finder" file in each folder keeps them,
+; as records: name length, name, x (2), y
+; ---------------------------------------------------------------------
+; read_positions: the .finder file of the folder in path_a -> pos_buf,
+; pos_len (path_a stays as it was)
+!zone read_positions
+read_positions:
+        jsr path_save
+        lda #<str_dotfinder
+        sta q0
+        lda #>str_dotfinder
+        sta q0+1
+        jsr path_add
+        lda #<path_a
+        sta q0
+        lda #>path_a
+        sta q0+1
+        lda #0
+        ldx #3
+-       sta fs_off,x
+        dex
+        bpl -
+        lda #<POSBUF_SIZE
+        sta fs_len
+        lda #>POSBUF_SIZE
+        sta fs_len+1
+        lda #<pos_buf
+        sta fs_rptr
+        lda #>pos_buf
+        sta fs_rptr+1
+        jsr fs_read
+        lda fs_rlen
+        ldx fs_rlen+1
+        bcc +
+        lda #0
+        tax
++       sta pos_len
+        stx pos_len+1
+        ; path_a back
+        ldx #0
+-       lda path_b,x
+        sta path_a,x
+        beq +
+        inx
+        bne -
++       rts
+
+; find_position: name at (q0) -> fs_x/fs_y, carry clear if pos_buf has it
+!zone find_position
+find_position:
+        lda #<pos_buf
+        sta q2
+        lda #>pos_buf
+        sta q2+1
+.rec:   sec                     ; at the end?
+        lda q2
+        sbc #<pos_buf
+        sta t0
+        lda q2+1
+        sbc #>pos_buf
+        sta t1
+        lda t0
+        cmp pos_len
+        lda t1
+        sbc pos_len+1
+        bcs .no
+        ldy #0
+        lda (q2),y
+        sta t2                  ; its name's length
+        ldx #0
+-       cpx t2
+        beq .end
+        inx
+        txa
+        tay
+        lda (q2),y
+        dey
+        cmp (q0),y
+        bne .next
+        jmp -
+.end:   ldy t2                  ; and the name has ended too
+        lda (q0),y
+        bne .next
+        iny
+        lda (q2),y
+        sta fs_x
+        iny
+        lda (q2),y
+        sta fs_x+1
+        iny
+        lda (q2),y
+        sta fs_y
+        clc
+        rts
+.next:  lda t2
+        clc
+        adc #4
+        adc q2
+        sta q2
+        bcc .rec
+        inc q2+1
+        jmp .rec
+.no:    sec
+        rts
+
+; save_positions: X = container: its children's places -> its .finder
+!zone save_positions
+save_positions:
+        cpx #OBJ_TRASH
+        bne .bf1011
+        jmp .out
+.bf1011:
+        stx u6
+        jsr obj_path
+        bcc .bf1014
+        jmp .out
+.bf1014:
+        lda #<str_dotfinder
+        sta q0
+        lda #>str_dotfinder
+        sta q0+1
+        jsr path_add
+        lda #<pos_buf
+        sta q2
+        lda #>pos_buf
+        sta q2+1
+        ldx #0
+.l:     stx u5
+        lda o_parent,x
+        cmp u6
+        bne .n
+        jsr obj_name_ptr
+        ldy #0                  ; length
+-       lda (q1),y
+        beq +
+        iny
+        bne -
++       sty t2
+        tya                     ; room for it?
+        clc
+        adc #4
+        adc q2
+        sta t0
+        lda q2+1
+        adc #0
+        cmp #>(pos_buf+POSBUF_SIZE)
+        bcc +
+        bne .write
+        lda t0
+        cmp #<(pos_buf+POSBUF_SIZE)
+        bcs .write
++       ldy #0
+        lda t2
+        sta (q2),y
+-       cpy t2
+        beq +
+        lda (q1),y
+        iny
+        sta (q2),y
+        jmp -
++       ldx u5
+        iny
+        lda o_xl,x
+        sta (q2),y
+        iny
+        lda o_xh,x
+        sta (q2),y
+        iny
+        lda o_y,x
+        sta (q2),y
+        iny
+        tya
+        clc
+        adc q2
+        sta q2
+        bcc .n
+        inc q2+1
+.n:     ldx u5
+        inx
+        cpx #MAXOBJ
+        bne .l
+.write: sec
+        lda q2
+        sbc #<pos_buf
+        sta fs_dlen
+        lda q2+1
+        sbc #>pos_buf
+        sta fs_dlen+1
+        lda #<pos_buf
+        sta fs_dptr
+        lda #>pos_buf
+        sta fs_dptr+1
+        lda #FSW_REPLACE
+        sta fs_mode
+        lda #<path_a
+        sta q0
+        lda #>path_a
+        sta q0+1
+        jsr fs_write            ; (a read-only share: never mind)
+.out:   rts
 
 ; ---------------------------------------------------------------------
 ; Geometry: where an object's icon is on the screen
@@ -351,7 +1222,7 @@ obj_geom:
         sta ic_y+1
         ; label
         ldx ob_id
-        jsr obj_name_ptr
+        jsr obj_label
         lda q1
         sta tstr
         lda q1+1
@@ -553,7 +1424,7 @@ draw_obj:
         lda lb_y1+1
         sta ty+1
         ldx ob_id
-        jsr obj_name_ptr
+        jsr obj_label
         lda #1
         sta font
         lda q1
@@ -795,7 +1666,7 @@ deselect:
 ; ---------------------------------------------------------------------
 ; Folder windows
 ; ---------------------------------------------------------------------
-; open_folder: X = container object
+; open_folder: X = container object (a volume, the Trash, a folder)
 fo_obj: !byte 0
 fo_win: !byte 0
 !zone open_folder
@@ -806,12 +1677,20 @@ open_folder:
         beq +
         tax
         jmp win_select
++       lda o_type,x            ; a network share: connect first
+        cmp #T_SHARE
+        bne +
+        jsr connect_share
+        bcc +
+        rts
 +       jsr win_alloc
         bcc +
         jmp too_many_windows
 +       stx fo_win
-        ; default rect: staggered by object id
-        ldy fo_obj
+        ; default rect: staggered
+        lda fo_obj
+        and #15
+        tay
         lda fold_x1,y
         sta w_x1l,x
         lda #0
@@ -848,19 +1727,57 @@ open_folder:
         ; zoom from the icon
         ldx fo_obj
         jsr zoom_from_obj
+        ; its entries, from the WiC64
+        lda #CUR_WATCH
+        jsr set_cursor
+        ldx fo_obj
+        jsr load_children
+        lda #CUR_ARROW
+        jsr set_cursor
         ldx fo_win
         stx wsr_id
         jsr folder_layout
         ldx fo_win
         jmp win_open
 
-; staggered default positions, by object id (16 entries is enough)
-fold_x1: !byte 24, 40, 50, 30, 30, 30, 30, 30, 60, 30, 30, 30, 30, 30, 30, 30
-         !byte 40, 50, 60, 64, 40, 50, 60, 64
-fold_y1: !byte 30, 60, 50, 30, 30, 30, 30, 30, 70, 30, 30, 30, 30, 30, 30, 30
-         !byte 40, 50, 60, 70, 40, 50, 60, 70
-fold_h:  !byte 148, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112
-         !byte 112, 112, 112, 112, 112, 112, 112, 112
+; staggered default positions (by object number & 15)
+; (object 0 is the Trash, 1 the startup disk, 2 and up the shares)
+fold_x1: !byte 60, 24, 40, 30, 36, 42, 48, 54, 60, 30, 36, 42, 48, 54, 60, 66
+fold_y1: !byte 70, 30, 50, 30, 36, 42, 48, 54, 60, 34, 40, 46, 52, 58, 64, 70
+fold_h:  !byte 112, 148, 120, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112, 112
+
+; connect_share: X = a share's object.  Carry set (and an alert shown)
+; if it could not be connected.
+cs_obj: !byte 0
+!zone connect_share
+connect_share:
+        stx cs_obj
+        ldy o_vol,x
+        lda vol_conn,y
+        bne .ok
+        lda #CUR_WATCH
+        jsr set_cursor
+        ldx cs_obj
+        lda o_vol,x
+        jsr fs_connect
+        php
+        pha
+        lda #CUR_ARROW
+        jsr set_cursor
+        pla
+        plp
+        bcs .fail
+        jsr vol_query
+        jsr count_trash
+        ldx #OBJ_TRASH
+        jsr redraw_obj
+.ok:    ldx cs_obj
+        clc
+        rts
+.fail:  jsr fs_alert
+        ldx cs_obj
+        sec
+        rts
 
 ; zr_* = icon rect of object X (sets zr_on if visible)
 !zone zoom_from_obj
@@ -1032,16 +1949,119 @@ folder_close:
         ldy w_data,x
         lda #$ff
         sta o_win,y
-        tya                     ; zoom back to the icon
+        tya
+        pha
         tax
-        jmp zoom_from_obj
+        jsr free_children
+        pla                     ; zoom back to the icon
+        tax
+        stx u5
+        jsr zoom_from_obj
+        ; and if its own folder is closed, it goes too (and so on up)
+        ldx u5
+-       lda o_type,x
+        cmp #T_FOLDER
+        bcc +
+        lda o_parent,x
+        cmp #MAXOBJ
+        bcs +
+        tay
+        lda o_win,y
+        cmp #$ff
+        bne +
+        sty u5
+        jsr pinned
+        bcs +
+        jsr free_obj
+        ldx u5
+        jmp -
++       rts
+
+; free_children: X = container: its entries stop being objects, except
+; those with a window (or with one inside them)
+fc_c:   !byte 0
+fc_x:   !byte 0
+!zone free_children
+free_children:
+        stx fc_c
+        ldx #MAXOBJ-1
+.l:     lda o_parent,x
+        cmp fc_c
+        bne .n
+        stx fc_x
+        jsr pinned
+        ldx fc_x
+        bcs .n
+        jsr free_obj
+        ldx fc_x
+.n:     dex
+        bpl .l
+        rts
+
+; pinned: X = object -> carry set if it, or something inside it, has a
+; window open
+!zone pinned
+pinned:
+        lda o_win,x
+        cmp #$ff
+        bne .yes
+        stx t3
+        ldy #MAXOBJ-1
+.w:     lda o_win,y             ; each object with a window
+        cmp #$ff
+        beq .nw
+        sty t2
+        lda #12
+        sta t1
+        tya
+        tax
+-       lda o_parent,x          ; is t3 above it?
+        cmp t3
+        beq .yes
+        cmp #MAXOBJ
+        bcs +
+        tax
+        dec t1
+        bne -
++       ldy t2
+.nw:    dey
+        bpl .w
+        ldx t3
+        clc
+        rts
+.yes:   sec
+        rts
+
+; free_obj: X = object: no longer an object
+free_obj:
+        lda #NOOBJ
+        sta o_parent,x
+        cpx sel_obj
+        bne +
+        sta sel_obj
+        lda #0
+        sta renaming
++       cpx last_obj
+        bne +
+        lda #NOOBJ
+        sta last_obj
++       txa                     ; nothing may come back to it
+        ldy #MAXOBJ-1
+-       cmp o_oldpar,y
+        bne +
+        lda #NOOBJ
+        sta o_oldpar,y
+        txa
++       dey
+        bpl -
+        rts
 
 ; M_DRAW
 !zone folder_draw
 folder_draw:
         lda w_data,x
         sta fd_f
-        ; info bar: "n items   nnn blocks used   nnn blocks free"
+        ; info bar: "n items   nnnK in disk   nnnK available"
         lda #1
         sta font
         lda #B_OR
@@ -1105,22 +2125,15 @@ folder_draw:
         lda fd_le+1
         adc twidth+1
         sta fd_le+1
-        jsr disk_used
-        sta u0
-        stx u1
-        sec
-        lda #<664
-        sbc u0
-        pha
-        lda #>664
-        sbc u1
+        lda fd_f                ; the container's volume (the Trash: 0)
         tax
-        pla
-        bcs +
+        lda o_vol,x
+        cpx #OBJ_TRASH
+        bne +
         lda #0
-        tax
-+       jsr utoa
-        jsr .kbuf
++       sta fd_v
+        jsr vol_free_str
+        jsr .kbuf32
         lda #<str_avail
         sta q0
         lda #>str_avail
@@ -1166,10 +2179,9 @@ folder_draw:
         sta fd_re
         bcs +
         dec fd_re+1
-+       lda u0
-        ldx u1
-        jsr utoa
-        jsr .kbuf
++       lda fd_v
+        jsr vol_used_str
+        jsr .kbuf32
         lda #<str_indisk
         sta q0
         lda #>str_indisk
@@ -1275,21 +2287,121 @@ folder_draw:
         cpx #MAXOBJ
         bne -
 .done:  jmp clip_pop
+.kbuf32: ; fd_buf = ut_buf
+        lda #<ut_buf
+        sta q0
+        lda #>ut_buf
+        sta q0+1
+        jmp +
 .kbuf:  ; fd_buf = numbuf
         lda #<numbuf
         sta q0
         lda #>numbuf
         sta q0+1
-        lda #<fd_buf
++       lda #<fd_buf
         sta q1
         lda #>fd_buf
         sta q1+1
-        jsr strcpy
-        rts
+        jmp strcpy
 fd_f:   !byte 0
+fd_v:   !byte 0
 fd_le:  !word 0
 fd_re:  !word 0
 fd_buf: !fill 24
+
+; vol_free_str, vol_used_str: A = volume -> its free or used KB in ut_buf
+vol_free_str:
+        asl
+        asl
+        tax
+        ldy #0
+-       lda vol_free,x
+        sta ut_v,y
+        inx
+        iny
+        cpy #4
+        bne -
+        jmp kb_str
+vol_used_str:
+        asl
+        asl
+        tax
+        ldy #0
+        sec
+-       lda vol_total,x
+        sbc vol_free,x
+        sta ut_v,y
+        inx
+        iny
+        tya                     ; (keep the borrow)
+        eor #4
+        bne -
+        ; fall through
+
+; kb_str: ut_v KB -> ut_buf, "nK", or "nM" or "nG" when it is large
+!zone kb_str
+kb_str:
+        lda #"K"
+        sta t4
+.big:   lda ut_v+2              ; 64K and up: the next unit
+        ora ut_v+3
+        beq .num
+        ldx #10                 ; / 1024
+-       lsr ut_v+3
+        ror ut_v+2
+        ror ut_v+1
+        ror ut_v
+        dex
+        bne -
+        lda t4
+        cmp #"K"
+        bne +
+        lda #"M"
+        bne ++
++       lda #"G"
+++      sta t4
+        jmp .big
+.num:   jsr utoa32
+        lda t4
+        sta ut_buf,x
+        lda #0
+        sta ut_buf+1,x
+        rts
+
+; utoa32: the 32 bit number ut_v -> decimal in ut_buf (ut_v is used up)
+!zone utoa32
+utoa32:
+        ldy #0                  ; digits
+.div:   lda #0                  ; ut_v /= 10, A = the remainder
+        ldx #32
+-       asl ut_v
+        rol ut_v+1
+        rol ut_v+2
+        rol ut_v+3
+        rol
+        cmp #10
+        bcc +
+        sbc #10
+        inc ut_v
++       dex
+        bne -
+        ora #"0"
+        pha
+        iny
+        lda ut_v
+        ora ut_v+1
+        ora ut_v+2
+        ora ut_v+3
+        bne .div
+        ldx #0
+-       pla
+        sta ut_buf,x
+        inx
+        dey
+        bne -
+        lda #0
+        sta ut_buf,x
+        rts
 
 ; count children of fd_f -> A
 count_items:
@@ -1303,27 +2415,6 @@ count_items:
 +       dex
         bpl -
         lda t0
-        rts
-
-; blocks used on disk -> A/X
-disk_used:
-        lda #0
-        sta t0
-        sta t1
-        ldx #MAXOBJ-1
--       lda o_parent,x
-        cmp #NOOBJ
-        beq +
-        clc
-        lda t0
-        adc o_size,x
-        sta t0
-        bcc +
-        inc t1
-+       dex
-        bpl -
-        lda t0
-        ldx t1
         rts
 
 ; M_KEY: typing renames the selected icon
@@ -1827,31 +2918,28 @@ find_target:
 !zone drop_into
 drop_into:
         stx u4
+        lda #0
+        sta mc_place            ; (to a free place)
         ldx dr_obj
         lda o_type,x
-        cmp #T_DISK
-        beq .disk
         cmp #T_TRASH
+        bcc .vol
         beq .no
-        ; no folder into itself or its own contents
-        lda u4
-        jsr obj_inside          ; is u4 inside dr_obj?
+        lda u4                  ; a file or folder
+        cmp #OBJ_TRASH
+        bne +
+        jmp to_trash
++       jsr obj_inside          ; not a folder into itself or its contents
         bcc .no
         ldx dr_obj
         lda o_parent,x
         cmp u4
         beq .no                 ; already there
-        ldx u4
-        jsr free_slot           ; -> fs_x, fs_y
-        ldx dr_obj
-        lda u4
-        jmp move_obj
-.disk:  lda u4
+        jmp move_or_copy
+.vol:   lda u4                  ; a volume: only to the Trash, to eject it
         cmp #OBJ_TRASH
         bne .no
-        lda #<str_noeject
-        ldy #>str_noeject
-        jmp alert_stop
+        jmp eject_vol
 .no:    rts
 
 ; carry clear if object A is X itself or inside X
@@ -1881,7 +2969,10 @@ drop_at:
         jsr win_at_mouse
         cpx #$ff
         bne .win
-        ; desktop: position = icon box top-left
+        ; desktop: only the volumes and the Trash live there
+        lda u5
+        cmp #T_FOLDER
+        bcs .no
         sec
         lda dr_x
         sbc dr_ox
@@ -1918,9 +3009,9 @@ drop_at:
 .win:   lda w_class,x
         cmp #CL_FOLDER
         beq .bf1942
-        jmp .no
+.no:    rts
 .bf1942:
-        lda u5                  ; disk and trash stay on the desktop
+        lda u5                  ; volumes and the Trash stay on the desktop
         cmp #T_FOLDER
         bcc .no
         stx u2
@@ -1930,7 +3021,6 @@ drop_at:
         ldx u2
         lda w_data,x
         sta u4
-        lda u4
         ldx dr_obj
         jsr obj_inside
         bcc .no
@@ -1974,10 +3064,380 @@ drop_at:
 +       clc
         adc w_scroll,x
         sta fs_y
+        lda #1                  ; at this place
+        sta mc_place
         ldx dr_obj
+        lda o_parent,x
+        cmp u4
+        bne .other
+        lda u4                  ; the same folder: just a new place
+        jsr move_obj
+        ldx u4
+        jmp save_positions
+.other: lda u4
+        cmp #OBJ_TRASH
+        bne +
+        jmp to_trash
++       jmp move_or_copy
+
+; ---------------------------------------------------------------------
+; Moving and copying on the WiC64
+; ---------------------------------------------------------------------
+; move_or_copy: dr_obj into container u4.  On the same volume it moves;
+; to another one, a file is copied.  mc_place: 0 = to a free place,
+; else to fs_x/fs_y.
+mc_place: !byte 0
+mc_obj:   !byte 0
+!zone move_or_copy
+move_or_copy:
+        ldx dr_obj
+        stx mc_obj
+        ldy u4
+        lda o_vol,y
+        cmp o_vol,x
+        bne .copy
+        jsr paths_to            ; path_b = where it is, path_a = where it goes
+        bcc .bf3060
+        jmp .long
+.bf3060:
+        jsr fs_rename
+        bcc +
+        jmp fs_alert
++       jsr .place
+        ldx mc_obj
         lda u4
+        jsr move_obj
+        ldx u4
+        jmp save_positions
+.copy:  lda o_type,x
+        cmp #T_FOLDER
+        bne +
+        lda #<str_nocopyfolder
+        ldy #>str_nocopyfolder
+        jmp alert_stop
++       jsr paths_to
+        bcc .bf3077
+        jmp .long
+.bf3077:
+        lda #CUR_WATCH
+        jsr set_cursor
+        jsr fs_copy
+        php
+        pha
+        lda #CUR_ARROW
+        jsr set_cursor
+        pla
+        plp
+        bcc +
+        jmp fs_alert
++       jsr vol_query           ; (less room there now)
+        ldx u4                  ; the copy shows if its folder is open
+        lda o_win,x
+        cmp #$ff
+        beq .out
+        jsr new_obj
+        bcs .out
+        stx u5
+        ldy mc_obj              ; the same as the original...
+        lda o_type,y
+        sta o_type,x
+        lda o_icon,y
+        sta o_icon,x
+        lda o_kl,y
+        sta o_kl,x
+        lda o_kh,y
+        sta o_kh,x
+        lda o_dl,y
+        sta o_dl,x
+        lda o_dh,y
+        sta o_dh,x
+        lda u4                  ; ...but there
+        sta o_parent,x
+        tay
+        lda o_vol,y
+        sta o_vol,x
+        ldx mc_obj
+        jsr obj_name_ptr
+        ldx u5
+        lda q1
+        ldy q1+1
+        jsr obj_set_name
+        jsr .place
+        ldx u5
+        lda fs_x
+        sta o_xl,x
+        lda fs_x+1
+        sta o_xh,x
+        lda fs_y
+        sta o_y,x
+        jsr redraw_obj
+        lda u4
+        jsr refresh_info
+        ldx u4
+        jmp save_positions
+.long:  lda #<str_toolong
+        ldy #>str_toolong
+        jmp alert_stop
+.out:   rts
+.place: lda mc_place            ; a free place unless dropped at one
+        bne +
+        ldx u4
+        jmp free_slot
++       rts
+
+; paths_to: path_b = path of mc_obj, path_a = path of u4 + "/" + its name.
+; q0 = path_b, q1 = path_a for fs_rename / fs_copy.  Carry set if too long.
+paths_to:
+        ldx mc_obj
+        jsr obj_path
+        bcs +
+        jsr path_save
+        ldx u4
+        jsr obj_path
+        bcs +
+        ldx mc_obj
+        jsr obj_name_ptr
+        lda q1
+        sta q0
+        lda q1+1
+        sta q0+1
+        jsr path_add
+        lda #<path_b
+        sta q0
+        lda #>path_b
+        sta q0+1
+        lda #<path_a
+        sta q1
+        lda #>path_a
+        sta q1+1
+        clc
++       rts
+
+; to_trash: dr_obj into the Trash: it moves to .Trash on its volume
+tt_obj: !byte 0
+tt_try: !byte 0
+!zone to_trash
+to_trash:
+        ldx dr_obj
+        stx tt_obj
+        lda o_vol,x             ; the volume needs a .Trash
+        jsr trash_path
+        lda #<path_a
+        sta q0
+        lda #>path_a
+        sta q0+1
+        jsr fs_mkdir            ; (it may be there already)
+        lda #0
+        sta tt_try
+.try:   ldx tt_obj
+        jsr obj_path
+        bcs .long
+        jsr path_save
+        ldx tt_obj
+        lda o_vol,x
+        jsr trash_path
+        ldx tt_obj
+        jsr obj_name_ptr
+        lda q1
+        sta q0
+        lda q1+1
+        sta q0+1
+        jsr path_add
+        lda #<path_b
+        sta q0
+        lda #>path_b
+        sta q0+1
+        lda #<path_a
+        sta q1
+        lda #>path_a
+        sta q1+1
+        jsr fs_rename
+        bcc .ok
+        cmp #FS_EXISTS          ; an older one of that name: away with it
+        bne .err
+        lda tt_try
+        bne .err
+        inc tt_try
+        jsr delete_tree
+        jmp .try
+.err:   jmp fs_alert
+.long:  lda #<str_toolong
+        ldy #>str_toolong
+        jmp alert_stop
+.ok:    ldx tt_obj
+        lda o_parent,x
+        sta o_oldpar,x
+        inc trash_n             ; (before move_obj, which redraws the Trash)
+        bne +
+        inc trash_n+1
++       lda mc_place
+        bne +
+        ldx #OBJ_TRASH
+        jsr free_slot
++       ldx tt_obj
+        lda #OBJ_TRASH
         jmp move_obj
-.no:    rts
+
+; eject_vol: X = a volume: a share is disconnected (its windows close);
+; the startup disk can't be ejected
+ev_vol: !byte 0
+!zone eject_vol
+eject_vol:
+        lda o_type,x
+        cmp #T_SHARE
+        beq +
+        lda #<str_noeject
+        ldy #>str_noeject
+        jmp alert_stop
++       lda o_vol,x
+        sta ev_vol
+        ldy #MAXWIN-1           ; close its windows, and the Trash's
+.w:     sty u5
+        lda w_used,y
+        beq .nw
+        lda w_class,y
+        cmp #CL_FOLDER
+        bne .nw
+        ldx w_data,y
+        cpx #OBJ_TRASH
+        beq .close
+        lda o_vol,x
+        cmp ev_vol
+        bne .nw
+.close: ldx u5
+        jsr win_close
+.nw:    ldy u5
+        dey
+        bpl .w
+        ldx #MAXOBJ-1           ; nothing on it is an object any more
+-       lda o_parent,x
+        cmp #NOOBJ
+        beq +
+        lda o_type,x
+        cmp #T_TRASH
+        bcc +
+        lda o_vol,x
+        cmp ev_vol
+        bne +
+        cpx #OBJ_TRASH
+        beq +
+        jsr free_obj
++       dex
+        bpl -
+        lda ev_vol
+        jsr fs_disconnect
+        jsr vol_query
+        jsr count_trash
+        ldx #OBJ_TRASH
+        jmp redraw_obj
+
+; delete_tree: delete the file or folder path_a, and everything in it
+dt_len: !byte 0
+!zone delete_tree
+delete_tree:
+        lda #<path_a
+        sta q0
+        lda #>path_a
+        sta q0+1
+        lda #<list_buf
+        sta fs_rptr
+        lda #>list_buf
+        sta fs_rptr+1
+        jsr fs_stat
+        bcs .out
+        lda list_buf            ; a file: just that
+        bne +
+        jmp .del
++       jsr path_len
+        stx dt_len
+.loop:  lda #0                  ; the folder's first entry
+        sta fs_first
+        sta fs_first+1
+        lda #1
+        sta fs_max
+        jsr list_path_a
+        bcs .out
+        lda list_buf+2
+        beq .rmdir
+        ldx list_buf+10         ; its name
+        cpx #NAMELEN
+        bcc +
+        ldx #NAMELEN-1
++       lda #0
+        sta label_buf,x
+-       dex
+        bmi +
+        lda list_buf+11,x
+        sta label_buf,x
+        jmp -
++       lda #<label_buf
+        sta q0
+        lda #>label_buf
+        sta q0+1
+        jsr path_add
+        lda list_buf+3          ; a folder: into it
+        bne .loop
+        jsr .del                ; a file: delete it, back up
+        bcs .out
+        jsr path_up
+        jmp .loop
+.rmdir: jsr .del
+        bcs .out
+        jsr path_len
+        cpx dt_len
+        beq .out
+        jsr path_up
+        jmp .loop
+.del:   lda #<path_a
+        sta q0
+        lda #>path_a
+        sta q0+1
+        jmp fs_delete
+.out:   rts
+
+; path_len: X = length of path_a
+path_len:
+        ldx #0
+-       lda path_a,x
+        beq +
+        inx
+        bne -
++       rts
+
+; path_up: path_a loses its last name
+path_up:
+        jsr path_len
+-       dex
+        bmi +
+        lda path_a,x
+        cmp #"/"
+        beq +
+        cmp #":"
+        bne -
+        inx                     ; (keep "n:")
++       lda #0
+        sta path_a,x
+        rts
+
+; fs_alert: A = the status of a file call that failed
+!zone fs_alert
+fs_alert:
+        ldx #0
+-       ldy fs_errs,x
+        beq .other
+        cmp fs_errs,x
+        beq +
+        inx
+        bne -
++       lda fs_err_lo,x
+        ldy fs_err_hi,x
+        jmp alert_stop
+.other: lda #<str_e_other
+        ldy #>str_e_other
+        jmp alert_stop
+fs_errs:   !byte FS_NOTFOUND, FS_EXISTS, FS_NOTEMPTY, FS_NOSHARE, FS_FULL, FS_DENIED, FS_NOWIC64, 0
+fs_err_lo: !byte <str_e_notfound, <str_e_exists, <str_e_notempty, <str_e_noshare, <str_e_full, <str_e_denied, <str_e_nowic64
+fs_err_hi: !byte >str_e_notfound, >str_e_exists, >str_e_notempty, >str_e_noshare, >str_e_full, >str_e_denied, >str_e_nowic64
 
 ; ---------------------------------------------------------------------
 ; move_obj: X = object, A = new container, fs_x/fs_y = position
@@ -2051,6 +3511,16 @@ move_obj:
         beq +
         ldx #OBJ_TRASH
         jsr redraw_obj
++       ldx mo_new              ; into a closed folder: not an object now
+        cpx #MAXOBJ
+        bcs +
+        lda o_win,x
+        cmp #$ff
+        bne +
+        ldx mo_obj
+        jsr pinned
+        bcs +
+        jsr free_obj
 +       rts
 refresh_info_old:
         lda mo_old
@@ -2112,14 +3582,17 @@ free_slot:
 -       lda o_parent,x
         cmp fsl_c
         bne +
+        lda o_y,x               ; (not placed yet)
+        cmp #$ff
+        beq +
         lda o_xh,x
         bne +
         lda o_xl,x
         sec
         sbc fs_x
         clc
-        adc #28
-        cmp #56
+        adc #CELL_W/2
+        cmp #CELL_W
         bcs +
         lda o_y,x
         sec
@@ -2135,7 +3608,7 @@ free_slot:
         clc
         adc #CELL_W
         sta fs_x
-        cmp #18+CELL_W*4
+        cmp #18+CELL_W*3
         bcc .col
         lda fs_y
         clc
@@ -2158,59 +3631,37 @@ open_obj:
         cmp #T_FOLDER+1
         bcs +
         jmp open_folder
++       cmp #T_APP
+        beq launch_obj
+        cmp #T_TEXT
+        bne +
+        jmp text_open
 +       cmp #T_SYS
         bne +
         lda #<str_sysfile
         ldy #>str_sysfile
         jmp alert_note
-+       lda o_app,x
-        asl
-        tay
-        lda app_open,y
-        sta jvec
-        lda app_open+1,y
-        sta jvec+1
-        jsr zoom_from_obj
-        jmp (jvec)
-.v:     !word 0
++       lda #<str_noapp         ; a document of no known kind
+        ldy #>str_noapp
+        jmp alert_note
 
-app_open:
-        !word readme_open, clip_open, nop_method, brickles_launch, sheet_launch
-        !word shapes_launch
-
-
-; Brickles and the Spreadsheet are real applications: the System
-; replaces the Finder with them
-brickles_launch:
-        lda #<str_brickles_file
-        ldy #>str_brickles_file
-        ldx #str_sheet_file-str_brickles_file
-        bne app_launch
-sheet_launch:
-        lda #<str_sheet_file
-        ldy #>str_sheet_file
-        ldx #str_shapes_file-str_sheet_file
-        bne app_launch
-shapes_launch:
-        lda #<str_shapes_file
-        ldy #>str_shapes_file
-        ldx #str_files_end-str_shapes_file
-app_launch:
-        sta u0
-        sty u1
-        stx u2
+; launch_obj: X = an application: the System replaces the Finder with it
+!zone launch_obj
+launch_obj:
+        jsr obj_path
+        bcc +
+        lda #<str_toolong
+        ldy #>str_toolong
+        jmp alert_stop
++       jsr zoom_from_obj
         lda zr_on               ; zoom from the icon to the whole screen
         beq +
         +rect 0, DESK_Y1, 319, 199
         jsr zoom_to_rect
-+       lda u0
-        ldy u1
-        ldx u2
++       jsr path_len
+        lda #<path_a
+        ldy #>path_a
         jmp launch_app
-str_brickles_file: !text "Brickles.app"
-str_sheet_file:    !text "Spreadsheet.app"
-str_shapes_file:   !text "Shapes.app"
-str_files_end:
 
 ; ---------------------------------------------------------------------
 ; Renaming: typing while an icon is selected replaces its name
@@ -2219,15 +3670,24 @@ str_files_end:
 rename_key:                     ; A = key
         ldx sel_obj
         cpx #NOOBJ
-        beq .out
-        cpx #OBJ_TRASH
-        beq .out
+        bne .bf3626
+        jmp .out
+.bf3626:
         sta u4
+        lda o_type,x            ; volumes and the Trash keep their names
+        cmp #T_FOLDER
+        bcs .bf3630
+        jmp .out
+.bf3630:
+        lda u4
         cmp #K_RETURN
-        beq end_rename_now
-        ldx sel_obj
+        bne +
+        jmp end_rename
++       ldx sel_obj             ; the label's place, to repaint
         jsr obj_base
-        bcs .out
+        bcc .bf3637
+        jmp .out
+.bf3637:
         jsr obj_geom
         jsr obj_bounds
         jsr limit_to_container
@@ -2236,17 +3696,36 @@ rename_key:                     ; A = key
         sta mo_rect,x
         dex
         bpl -
-        ldx sel_obj
-        jsr obj_name_ptr
         lda renaming
         bne +
-        lda #1
-        sta renaming
-        ldy #0
-        tya
-        sta (q1),y
-+       ldy #0                  ; find the end of the name
+        lda #1                  ; typing starts a new name; a hidden
+        sta renaming            ; extension stays
+        lda #0
+        sta rn_buf
+        sta rn_ext
+        ldx sel_obj
+        jsr obj_name_ptr
+        jsr ext_of
+        bcs ++
+        ldx #0
 -       lda (q1),y
+        sta rn_ext,x
+        beq ++
+        inx
+        iny
+        bne -
+++      ldx #0                  ; room for the name
+-       lda rn_ext,x
+        beq +
+        inx
+        bne -
++       stx t0
+        lda #NAMELEN-1
+        sec
+        sbc t0
+        sta rn_max
++       ldy #0                  ; find the end of the name
+-       lda rn_buf,y
         beq +
         iny
         bne -
@@ -2257,18 +3736,22 @@ rename_key:                     ; A = key
         beq .redraw
         dey
         lda #0
-        sta (q1),y
+        sta rn_buf,y
         jmp .redraw
 .add:   cmp #32
         bcc .out
         cmp #127
         bcs .out
-        cpy #15
+        cmp #"/"                ; (not in names)
+        beq .out
+        cmp #":"
+        beq .out
+        cpy rn_max
         bcs .out
-        sta (q1),y
+        sta rn_buf,y
         iny
         lda #0
-        sta (q1),y
+        sta rn_buf,y
 .redraw:
         ldx #5
 -       lda mo_rect,x
@@ -2280,23 +3763,102 @@ rename_key:                     ; A = key
         jsr redraw_obj
 .out:   rts
 
+; end_rename: the typed name (with any hidden extension) becomes the
+; object's name on the WiC64.  An empty name changes nothing.
+!zone end_rename
 end_rename_now:
 end_rename:
         lda renaming
-        beq +
-        lda #0
+        bne +
+        rts
++       ldx sel_obj             ; where the typed label is, to repaint
+        jsr obj_base
+        bcs +
+        jsr obj_geom
+        jsr obj_bounds
+        jsr limit_to_container
+        ldx #5
+-       lda rx1,x
+        sta mo_rect,x
+        dex
+        bpl -
++       lda #0
         sta renaming
-        ldx sel_obj
-        jsr obj_name_ptr        ; empty name -> "untitled"
+        lda rn_buf
+        bne .bf3735
+        jmp .done
+.bf3735:
+        ldx #0                  ; rn_new = rn_buf + rn_ext
         ldy #0
-        lda (q1),y
-        bne ++
-        lda #<str_untitled
+-       lda rn_buf,x
+        beq +
+        sta rn_new,y
+        inx
+        iny
+        bne -
++       ldx #0
+-       lda rn_ext,x
+        sta rn_new,y
+        beq +
+        inx
+        iny
+        bne -
++       ldx sel_obj             ; the same as before?
+        jsr obj_name_ptr
+        ldy #0
+-       lda (q1),y
+        cmp rn_new,y
+        bne .new
+        cmp #0
+        beq .done
+        iny
+        bne -
+.new:   ldx sel_obj             ; path_b = old path, path_a = new one
+        stx mc_obj
+        jsr obj_path
+        bcs .done
+        jsr path_save
+        ldx mc_obj
+        lda o_parent,x
+        cmp #MAXOBJ
+        bcs .done
+        tax
+        jsr obj_path
+        bcs .done
+        lda #<rn_new
         sta q0
-        lda #>str_untitled
+        lda #>rn_new
         sta q0+1
-        jsr strcpy
-++      ldx sel_obj
+        jsr path_add
+        lda #<path_b
+        sta q0
+        lda #>path_b
+        sta q0+1
+        lda #<path_a
+        sta q1
+        lda #>path_a
+        sta q1+1
+        jsr fs_rename
+        bcc +
+        jsr fs_alert
+        jmp .done
++       ldx mc_obj
+        lda #<rn_new
+        ldy #>rn_new
+        jsr obj_set_name
+        ldx mc_obj
+        lda o_parent,x
+        tax
+        jsr save_positions
+.done:  ldx #5
+-       lda mo_rect,x
+        sta rx1,x
+        dex
+        bpl -
+        jsr redraw_region
+        ldx sel_obj
+        cpx #NOOBJ
+        beq +
         jsr redraw_obj
 +       rts
 
@@ -2387,48 +3949,112 @@ act_view:
         sta w_view,x
 +       rts
 
+; Eject: a network share is disconnected
 act_eject:
-        lda #<str_noeject
-        ldy #>str_noeject
-        jmp alert_stop
+        ldx sel_obj
+        cpx #NOOBJ
+        beq +
+        lda o_type,x
+        cmp #T_TRASH
+        bcs +
+        jmp eject_vol
++       rts
 
-; New Folder: in the front folder window (or on the disk)
-!zone new_folder
-new_folder:
-        jsr new_obj
-        bcs .out
-        stx nf_obj
-        ldy #OBJ_DISK
+; the container of the front folder window (else the startup disk) -> X
+front_container:
         jsr front_win
         cpx #$ff
         beq +
         lda w_class,x
         cmp #CL_FOLDER
         bne +
-        ldy w_data,x
-+       sty nf_par
-        ldx nf_obj
+        lda w_data,x
+        tax
+        rts
++       ldx vol_obj
+        rts
+
+; New Folder: "Empty Folder" (or "Empty Folder 2" ...) in the front
+; folder window, or on the startup disk
+!zone new_folder
+new_folder:
+        jsr front_container
+        cpx #OBJ_TRASH
+        bne +
+        rts
++       stx nf_par
+        lda #<str_newfolder     ; the name
+        ldy #>str_newfolder
+        sta q0
+        sty q0+1
+        ldx #0
+-       lda str_newfolder,x
+        sta rn_new,x
+        beq +
+        inx
+        bne -
++       stx nf_end
+        lda #"1"
+        sta nf_n
+.try:   ldx nf_par
+        jsr obj_path
+        bcc .bf3946
+        jmp .out
+.bf3946:
+        lda #<rn_new
+        sta q0
+        lda #>rn_new
+        sta q0+1
+        jsr path_add
+        lda #<path_a
+        sta q0
+        lda #>path_a
+        sta q0+1
+        jsr fs_mkdir
+        bcc .made
+        cmp #FS_EXISTS
+        bne .err
+        inc nf_n                ; taken: "Empty Folder 2", 3, ...
+        lda nf_n
+        cmp #'9'+1
+        bcs .err
+        ldx nf_end
+        lda #" "
+        sta rn_new,x
+        lda nf_n
+        sta rn_new+1,x
+        lda #0
+        sta rn_new+2,x
+        jmp .try
+.err:   jmp fs_alert
+.made:  jsr vol_query
+        ldx nf_par              ; shows if its folder is open
+        lda o_win,x
+        cmp #$ff
+        beq .out
+        jsr new_obj
+        bcs .out
+        stx nf_obj
+        lda nf_par
+        sta o_parent,x
+        tay
+        lda o_vol,y
+        sta o_vol,x
         lda #T_FOLDER
         sta o_type,x
         lda #IC_FOLDER
         sta o_icon,x
-        lda #APP_NONE
-        sta o_app,x
         lda #0
-        sta o_size,x
-        lda #6
-        sta o_date,x
-        jsr obj_name_ptr
-        lda #<str_o_empty
-        sta q0
-        lda #>str_o_empty
-        sta q0+1
-        jsr strcpy
+        sta o_kl,x
+        sta o_kh,x
+        sta o_dl,x
+        sta o_dh,x
+        lda #<rn_new
+        ldy #>rn_new
+        jsr obj_set_name
         ldx nf_par
         jsr free_slot
         ldx nf_obj
-        lda nf_par
-        sta o_parent,x
         lda fs_x
         sta o_xl,x
         lda fs_x+1
@@ -2438,12 +4064,16 @@ new_folder:
         jsr select_obj
         lda nf_par
         jsr refresh_info
+        ldx nf_par
+        jmp save_positions
 .out:   rts
 
 nf_par: !byte 0
 nf_obj: !byte 0
+nf_end: !byte 0
+nf_n:   !byte 0
 
-; new_obj: X = free object slot (carry set if none)
+; new_obj: X = a free object (carry set if there is none)
 new_obj:
         ldx #0
 -       lda o_parent,x
@@ -2456,83 +4086,134 @@ new_obj:
         rts
 +       lda #0
         sta o_flags,x
-        sta o_locked,x
+        sta o_vol,x
+        sta o_kl,x
+        sta o_kh,x
+        sta o_dl,x
+        sta o_dh,x
         lda #$ff
         sta o_win,x
+        lda #NOOBJ
+        sta o_oldpar,x
         clc
         rts
 
-; Duplicate: "Copy of <name>" next to it
+; Duplicate: a file, as "Copy of <name>" next to it
 !zone act_dup
 act_dup:
         ldx sel_obj
         cpx #NOOBJ
-        bne .bf2380
-        jmp .out
-.bf2380:
+        bne .bf4065
+        jmp .no
+.bf4065:
         lda o_type,x
         cmp #T_APP
-        bcs .bf2383
-        jmp .out
-.bf2383:
+        bcs .bf4068
+        jmp .no
+.bf4068:
+        lda o_parent,x
+        cmp #OBJ_TRASH
+        bne .bf4071
+        jmp .no
+.bf4071:
+        stx mc_obj
+        sta u4
+        ; rn_new = "Copy of " + the name, cut so the extension stays
+        ldx #0
+-       lda str_copyof,x
+        beq +
+        sta rn_new,x
+        inx
+        bne -
++       stx t3
+        ldx mc_obj
+        jsr obj_name_ptr
+        jsr ext_of              ; Y = the dot (or the end)
+        sty t2
+        ; name characters that fit: NAMELEN-1 - "Copy of " - extension
+        lda t7
+        sec
+        sbc t2
+        sta t1                  ; extension length
+        lda #NAMELEN-1
+        sec
+        sbc t3
+        sec
+        sbc t1
+        cmp t2
+        bcc +
+        lda t2
++       sta t0                  ; name characters
+        ldy #0
+        ldx t3
+-       cpy t0
+        beq +
+        lda (q1),y
+        sta rn_new,x
+        inx
+        iny
+        bne -
++       ldy t2                  ; the extension, and the end
+-       lda (q1),y
+        sta rn_new,x
+        beq +
+        inx
+        iny
+        bne -
++       ldx mc_obj              ; path_b = it, path_a = the copy
+        jsr obj_path
+        bcc .bf4118
+        jmp .no
+.bf4118:
+        jsr path_save
+        ldx u4
+        jsr obj_path
+        bcc .bf4122
+        jmp .no
+.bf4122:
+        lda #<rn_new
+        sta q0
+        lda #>rn_new
+        sta q0+1
+        jsr path_add
+        lda #<path_b
+        sta q0
+        lda #>path_b
+        sta q0+1
+        lda #<path_a
+        sta q1
+        lda #>path_a
+        sta q1+1
+        jsr fs_copy
+        bcc +
+        jmp fs_alert
++       jsr vol_query
         jsr new_obj
-        bcc .bf2385
-        jmp .out
-.bf2385:
+        bcs .no
         stx nf_obj
-        ldy sel_obj
-        lda o_parent,y
+        ldy mc_obj
+        lda u4
         sta o_parent,x
-        sta nf_par
-        lda o_icon,y
-        sta o_icon,x
+        lda o_vol,y
+        sta o_vol,x
         lda o_type,y
         sta o_type,x
-        lda o_app,y
-        sta o_app,x
-        lda o_size,y
-        sta o_size,x
-        lda #6
-        sta o_date,x
-        jsr obj_name_ptr
-        lda #<str_copyof
-        sta q0
-        lda #>str_copyof
-        sta q0+1
-        jsr strcpy
-        ldx sel_obj
-        jsr obj_name_ptr
-        lda q1
-        sta q0
-        lda q1+1
-        sta q0+1
-        ldx nf_obj
-        jsr obj_name_ptr
-        jsr strcat
-        ldx nf_obj                  ; truncate to 15
-        jsr obj_name_ptr
-        ldy #15
-        lda #0
-        sta (q1),y
-        lda nf_par
-        cmp #DESKTOP
-        bne +
-        ldy sel_obj
-        lda o_xl,y
-        sec
-        sbc #30
-        sta fs_x
-        lda o_xh,y
-        sbc #0
-        sta fs_x+1
-        lda o_y,y
-        clc
-        adc #8
-        sta fs_y
-        jmp ++
-+       ldx nf_par
+        lda o_icon,y
+        sta o_icon,x
+        lda o_kl,y
+        sta o_kl,x
+        lda o_kh,y
+        sta o_kh,x
+        lda o_dl,y
+        sta o_dl,x
+        lda o_dh,y
+        sta o_dh,x
+        lda #<rn_new
+        ldy #>rn_new
+        jsr obj_set_name
+        ldx u4
         jsr free_slot
-++      ldx nf_obj
+        ldx nf_obj
         lda fs_x
         sta o_xl,x
         lda fs_x+1
@@ -2540,11 +4221,14 @@ act_dup:
         lda fs_y
         sta o_y,x
         jsr select_obj
-        lda nf_par
+        lda u4
         jsr refresh_info
-.out:   rts
+        ldx u4
+        jmp save_positions
+.no:    rts
 
-; Put Back: from the trash to where it came from
+; Put Back: from the Trash to the folder it came from (or, if that is
+; not open any more, the top of its volume)
 !zone put_back
 put_back:
         ldx sel_obj
@@ -2553,22 +4237,39 @@ put_back:
         lda o_parent,x
         cmp #OBJ_TRASH
         bne .out
+        stx mc_obj
+        stx dr_obj
         lda o_oldpar,x
-        sta u4
-        cmp #DESKTOP
-        beq .desk
-        tax
-        jsr free_slot
+        cmp #MAXOBJ
+        bcs .root
+        tay
+        lda o_parent,y          ; (still an object, on the same volume?)
+        cmp #NOOBJ
+        beq .root
+        lda o_vol,y
+        cmp o_vol,x
+        bne .root
+        tya
         jmp .go
-.desk:  lda #<200
-        sta fs_x
-        lda #>200
-        sta fs_x+1
-        lda #60
-        sta fs_y
-.go:    ldx sel_obj
+.root:  ldy o_vol,x
+        lda vol_obj,y
+.go:    sta u4
+        jsr paths_to
+        bcs .out
+        jsr fs_rename
+        bcc +
+        jmp fs_alert
++       lda trash_n             ; one less in the Trash
+        bne +
+        dec trash_n+1
++       dec trash_n
+        ldx u4
+        jsr free_slot
+        ldx mc_obj
         lda u4
-        jmp move_obj
+        jsr move_obj
+        ldx u4
+        jmp save_positions
 .out:   rts
 
 ; Clean Up: snap the icons of the front folder to the grid
@@ -2643,40 +4344,48 @@ clean_up:
         jsr folder_layout
         ldx u6
         jsr win_get_content
-        jmp redraw_region
+        jsr redraw_region
+        ldx u4
+        jmp save_positions
 .out:   rts
 
-; Empty Trash: everything inside the trash goes away
+; Empty Trash: the .Trash folder of every connected volume goes
 !zone empty_trash
 empty_trash:
         jsr trash_full
         beq .out
-        ldx #MAXOBJ-1
-.l:     stx et_i
-        cpx #OBJ_TRASH
-        beq .n
-        lda o_parent,x
-        cmp #NOOBJ
-        beq .n
-        lda #OBJ_TRASH
-        jsr obj_inside_rev      ; is X inside the trash?
-        bcs .n
-        ldx et_i
-        lda o_win,x             ; close its window
-        cmp #$ff
+        lda #CUR_WATCH
+        jsr set_cursor
+        ldx #0
+.v:     cpx vol_n
+        bcs .done
+        stx u5
+        lda vol_conn,x
         beq +
+        txa
+        jsr trash_path
+        jsr delete_tree
++       ldx u5
+        inx
+        jmp .v
+.done:  lda #CUR_ARROW
+        jsr set_cursor
+        ldx #MAXOBJ-1           ; what was in the Trash is gone
+-       lda o_parent,x
+        cmp #OBJ_TRASH
+        bne +
+        lda o_win,x             ; (and the windows of folders in it)
+        cmp #$ff
+        beq ++
+        stx u5
         tax
         jsr win_close
-        ldx et_i
-+       lda #NOOBJ
-        sta o_parent,x
-        cpx sel_obj
-        bne .n
-        lda #NOOBJ
-        sta sel_obj
-.n:     ldx et_i
-        dex
-        bpl .l
+        ldx u5
+++      jsr free_obj
++       dex
+        bpl -
+        jsr vol_query
+        jsr count_trash
         ldx #OBJ_TRASH
         jsr redraw_obj
         lda #OBJ_TRASH
@@ -2689,26 +4398,6 @@ empty_trash:
         jsr win_get_content
         jmp redraw_region
 .out:   rts
-
-et_i:   !byte 0
-
-; carry clear if object X is inside container A (not X itself)
-obj_inside_rev:
-        sta t5
-        lda o_parent,x
-        ldy #10
--       cmp t5
-        beq +
-        cmp #MAXOBJ
-        bcs ++
-        tax
-        lda o_parent,x
-        dey
-        bne -
-++      sec
-        rts
-+       clc
-        rts
 
 erase_disk:
         lda #<str_erase
@@ -2743,15 +4432,28 @@ update_menus:
         lda u0
         ldx #MN_FILE+5           ; Get Info
         jsr menu_set
-        lda #0                  ; Duplicate: applications and documents
+        lda #0                  ; Duplicate: files, not in the Trash
         ldx sel_obj
         cpx #NOOBJ
         beq +
         ldy o_type,x
         cpy #T_APP
         bcc +
+        ldy o_parent,x
+        cpy #OBJ_TRASH
+        beq +
         lda #1
 +       ldx #MN_FILE+6
+        jsr menu_set
+        lda #0                  ; Eject: a network share
+        ldx sel_obj
+        cpx #NOOBJ
+        beq +
+        ldy o_type,x
+        cpy #T_SHARE
+        bne +
+        lda #1
++       ldx #MN_FILE+9
         jsr menu_set
         lda #0                  ; Put Back: something in the trash
         ldx sel_obj

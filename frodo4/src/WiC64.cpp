@@ -21,6 +21,8 @@
 #include "Prefs.h"
 
 #include <algorithm>
+#include <chrono>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <system_error>
@@ -67,7 +69,36 @@ void WiC64::Reset()
 void WiC64::NewPrefs(const Prefs * prefs)
 {
 	enabled = prefs->WiC64;
-	share = prefs->WiC64Share;
+
+	// Volume 0: the internal flash, the startup disk.  Then the shares,
+	// "name=folder" or just "folder", separated by ';'.  Shares start
+	// disconnected; the C64 connects them (as the real WiC64 logs in).
+	volumes.clear();
+	volumes.push_back({"System Disk", prefs->WiC64Flash, false, true});
+	std::string list = prefs->WiC64Share;
+	size_t start = 0;
+	while (start < list.size()) {
+		size_t end = list.find(';', start);
+		if (end == std::string::npos) {
+			end = list.size();
+		}
+		std::string item = list.substr(start, end - start);
+		if (!item.empty()) {
+			std::string name, path = item;
+			size_t eq = item.find('=');
+			if (eq != std::string::npos) {
+				name = item.substr(0, eq);
+				path = item.substr(eq + 1);
+			} else {
+				name = fs::path(path).lexically_normal().filename().string();
+				if (name.empty()) {
+					name = fs::path(path).lexically_normal().parent_path().filename().string();
+				}
+			}
+			volumes.push_back({name, path, true, false});
+		}
+		start = end + 1;
+	}
 }
 
 
@@ -264,7 +295,7 @@ void WiC64::request_complete()
 			break;
 
 		// The file service
-		case 0x80: cmd_info(); break;
+		case 0x80: cmd_info(p, n); break;
 		case 0x81: cmd_list(p, n); break;
 		case 0x82: cmd_read(p, n); break;
 		case 0x83: cmd_write(p, n); break;
@@ -273,6 +304,9 @@ void WiC64::request_complete()
 		case 0x86: cmd_mkdir(p, n); break;
 		case 0x87: cmd_stat(p, n); break;
 		case 0x88: cmd_rename(p, n, true); break;
+		case 0x89: cmd_volumes(); break;
+		case 0x8a: cmd_connect(p, n, true); break;
+		case 0x8b: cmd_connect(p, n, false); break;
 
 		default:
 			fail(ST_CLIENT, "Undefined command");
@@ -296,14 +330,38 @@ static uint8_t status_of(const std::error_code & ec)
 	return ST_IO;
 }
 
-// Share-relative path -> host path.  False (and a reply sent) if not allowed.
-bool WiC64::host_path(const std::string & rel, std::string & out)
+// Is volume vol there and connected?  (If not, a reply is sent.)
+bool WiC64::volume_ready(int vol)
 {
-	if (share.empty() || !fs::is_directory(share)) {
-		fail(ST_NO_SHARE, "The share is not available");
+	if (vol < 0 || vol >= int(volumes.size())) {
+		fail(ST_NO_SHARE, "No such volume");
 		return false;
 	}
-	fs::path p(share);
+	if (!volumes[vol].connected) {
+		fail(ST_NO_SHARE, "The share is not connected");
+		return false;
+	}
+	if (volumes[vol].path.empty() || !fs::is_directory(volumes[vol].path)) {
+		fail(ST_NO_SHARE, "The volume is not available");
+		return false;
+	}
+	return true;
+}
+
+// "n:path" (or "path", on volume 0) -> host path.  False (and a reply
+// sent) if not allowed.
+bool WiC64::host_path(const std::string & full, std::string & out, int * vol_out)
+{
+	int vol = 0;
+	std::string rel = full;
+	if (rel.size() >= 2 && rel[0] >= '0' && rel[0] <= '9' && rel[1] == ':') {
+		vol = rel[0] - '0';
+		rel = rel.substr(2);
+	}
+	if (!volume_ready(vol)) {
+		return false;
+	}
+	fs::path p(volumes[vol].path);
 	size_t start = 0;
 	while (start <= rel.size()) {
 		size_t end = rel.find('/', start);
@@ -322,28 +380,97 @@ bool WiC64::host_path(const std::string & rel, std::string & out)
 		start = end + 1;
 	}
 	out = p.string();
+	if (vol_out) {
+		*vol_out = vol;
+	}
 	return true;
 }
 
-void WiC64::cmd_info()
+// Last change of a host file, DOS/FAT style: year-1980 (7 bits), month, day
+static uint16_t fat_date(const std::string & path)
 {
-	if (share.empty() || !fs::is_directory(share)) {
-		fail(ST_NO_SHARE, "The share is not available");
+	std::error_code ec;
+	auto ft = fs::last_write_time(path, ec);
+	if (ec) {
+		return 0;
+	}
+	auto st = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
+		ft - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
+	std::time_t t = std::chrono::system_clock::to_time_t(st);
+	std::tm * tm = std::localtime(&t);
+	if (!tm || tm->tm_year < 80) {
+		return 0;
+	}
+	return ((tm->tm_year - 80) << 9) | ((tm->tm_mon + 1) << 5) | tm->tm_mday;
+}
+
+void WiC64::cmd_info(const uint8_t * p, size_t n)
+{
+	int vol = n ? p[0] : 0;
+	if (!volume_ready(vol)) {
 		return;
 	}
 	std::error_code ec;
-	fs::space_info si = fs::space(share, ec);
+	fs::space_info si = fs::space(volumes[vol].path, ec);
 	std::vector<uint8_t> out;
 	uint64_t total = ec ? 0 : si.capacity / 1024, avail = ec ? 0 : si.available / 1024;
 	put32(out, uint32_t(std::min<uint64_t>(total, 0xffffffff)));
 	put32(out, uint32_t(std::min<uint64_t>(avail, 0xffffffff)));
-	std::string name = fs::path(share).lexically_normal().filename().string();
-	if (name.empty()) {
-		name = fs::path(share).lexically_normal().parent_path().filename().string();
-	}
-	auto nb = bytes_of(c64_name(name));
+	auto nb = bytes_of(c64_name(volumes[vol].name));
 	out.insert(out.end(), nb.begin(), nb.end());
 	reply(ST_OK, out);
+}
+
+void WiC64::cmd_volumes()
+{
+	std::vector<uint8_t> out;
+	out.push_back(uint8_t(volumes.size()));
+	for (size_t i = 0; i < volumes.size(); ++i) {
+		const Volume & v = volumes[i];
+		bool up = v.connected && !v.path.empty() && fs::is_directory(v.path);
+		uint64_t total = 0, avail = 0;
+		if (up) {
+			std::error_code ec;
+			fs::space_info si = fs::space(v.path, ec);
+			if (!ec) {
+				total = si.capacity / 1024;
+				avail = si.available / 1024;
+			}
+		}
+		out.push_back(uint8_t(i));
+		out.push_back(v.network ? 1 : 0);
+		out.push_back(up ? 1 : 0);
+		put32(out, uint32_t(std::min<uint64_t>(total, 0xffffffff)));
+		put32(out, uint32_t(std::min<uint64_t>(avail, 0xffffffff)));
+		std::string name = c64_name(v.name).substr(0, 255);
+		out.push_back(uint8_t(name.size()));
+		out.insert(out.end(), name.begin(), name.end());
+	}
+	reply(ST_OK, out);
+}
+
+void WiC64::cmd_connect(const uint8_t * p, size_t n, bool connect)
+{
+	int vol = n ? p[0] : -1;
+	if (vol < 0 || vol >= int(volumes.size())) {
+		fail(ST_NO_SHARE, "No such volume");
+		return;
+	}
+	Volume & v = volumes[vol];
+	if (!v.network) {					// the flash is always there
+		reply(ST_OK);
+		return;
+	}
+	if (connect) {
+		if (v.path.empty() || !fs::is_directory(v.path)) {
+			fail(ST_NO_SHARE, "The share could not be reached");
+			return;
+		}
+		v.connected = true;
+	} else {
+		v.connected = false;
+	}
+	reply(ST_OK);
 }
 
 void WiC64::cmd_list(const uint8_t * p, size_t n)
@@ -364,7 +491,7 @@ void WiC64::cmd_list(const uint8_t * p, size_t n)
 		return;
 	}
 
-	struct Entry { std::string name; bool dir; uint32_t size; };
+	struct Entry { std::string name; bool dir; uint32_t size; uint16_t date; };
 	std::vector<Entry> entries;
 	for (const auto & de : fs::directory_iterator(path, ec)) {
 		std::string name = de.path().filename().string();
@@ -374,7 +501,8 @@ void WiC64::cmd_list(const uint8_t * p, size_t n)
 		std::error_code ec2;
 		bool dir = de.is_directory(ec2);
 		uint64_t size = dir ? 0 : de.file_size(ec2);
-		entries.push_back({c64_name(name), dir, uint32_t(std::min<uint64_t>(size, 0xffffffff))});
+		entries.push_back({c64_name(name), dir, uint32_t(std::min<uint64_t>(size, 0xffffffff)),
+		                   fat_date(de.path().string())});
 	}
 	if (ec) {
 		fail(status_of(ec), ec.message());
@@ -395,11 +523,13 @@ void WiC64::cmd_list(const uint8_t * p, size_t n)
 	for (size_t i = first; i < entries.size() && count < max; ++i) {
 		const Entry & e = entries[i];
 		std::string name = e.name.substr(0, 255);
-		if (out.size() + 7 + name.size() > 0xffff) {
+		if (out.size() + 9 + name.size() > 0xffff) {
 			break;
 		}
 		out.push_back(e.dir ? 1 : 0);
 		put32(out, e.size);
+		out.push_back(e.date & 0xff);
+		out.push_back(e.date >> 8);
 		out.push_back(uint8_t(name.size()));
 		out.insert(out.end(), name.begin(), name.end());
 		++count;
@@ -514,7 +644,13 @@ void WiC64::cmd_rename(const uint8_t * p, size_t n, bool copy)
 		return;
 	}
 	std::string from, to;
-	if (!host_path(string_of(p + 1, p[0]), from) || !host_path(string_of(p + 1 + p[0], n - 1 - p[0]), to)) {
+	int vol_from = 0, vol_to = 0;
+	if (!host_path(string_of(p + 1, p[0]), from, &vol_from) ||
+	    !host_path(string_of(p + 1 + p[0], n - 1 - p[0]), to, &vol_to)) {
+		return;
+	}
+	if (!copy && vol_from != vol_to) {
+		fail(ST_BAD_REQUEST, "Things can only be moved within a volume");
 		return;
 	}
 	std::error_code ec;
@@ -576,5 +712,8 @@ void WiC64::cmd_stat(const uint8_t * p, size_t n)
 	bool dir = fs::is_directory(path, ec);
 	out.push_back(dir ? 1 : 0);
 	put32(out, dir ? 0 : uint32_t(std::min<uintmax_t>(fs::file_size(path, ec), 0xffffffff)));
+	uint16_t date = fat_date(path);
+	out.push_back(date & 0xff);
+	out.push_back(date >> 8);
 	reply(ST_OK, out);
 }

@@ -6,10 +6,11 @@ Everything is written from scratch in 6502 assembly.
 
 It has a menu bar with pull-down menus, overlapping windows, a Finder with
 icons, and real applications that replace the Finder while they run, the way
-the Mac worked before MultiFinder. Its files live on a network share, reached
-through a [WiC64](https://wic64.net/web/) (an ESP32 Wi-Fi adapter on the user
-port): a one-block BOOT program loads the System from the share, which then
-loads everything else from there, about 100 times faster than a 1541.
+the Mac worked before MultiFinder. Its files live on a
+[WiC64](https://wic64.net/web/), an ESP32 Wi-Fi adapter on the user port: the
+WiC64's own flash is the startup disk, and network (SMB) shares, from a PC or
+a NAS, are opened from the desktop. A one-block BOOT program loads the System
+from the flash, about 100 times faster than a 1541.
 
 Like the Mac's Toolbox, the System is used only through a published API: a
 jump table at a fixed address ([docs/api.md](docs/api.md)), so applications
@@ -39,10 +40,12 @@ Commodore theme: a C= logo in place of the Apple, a happy C64 at start-up.
 - **Desk accessories** (Calculator, Note Pad, Puzzle, Alarm Clock, Key Caps,
   Control Panel) are out of the System for now. Their source is in
   `src/da_*.asm`; they'll come back as separate files loaded from disk.
-- **Finder**: disk and folder windows that scroll both ways, dragging icons
-  between folders and to the Trash, Get Info, New Folder, Duplicate, Put Back,
-  Clean Up, renaming icons by typing, zoom-rect animations, Restart and Shut
-  Down.
+- **Finder**: the real contents of the WiC64's volumes: the startup disk
+  and network shares (double-click to connect, drag to the Trash to
+  disconnect), in windows that scroll both ways. Dragging moves things
+  between folders, copies them between volumes, or puts them in the Trash;
+  Get Info, New Folder, Duplicate, Put Back, Empty Trash, Clean Up, renaming
+  by typing, text documents, and icon positions remembered in each folder.
 - **Brickles**: a Breakout game. The ball and paddle are hardware sprites.
 - **Shapes**: a QuickDraw demonstration: lines, ovals, circles, round
   rects and random shapes, in a choice of patterns or inverting.
@@ -62,13 +65,15 @@ cd frodo4 && ./autogen.sh && make && cd ..   # the patched emulator
 ```
 
 `run.sh` builds Frodo itself if it hasn't been built yet. The emulated WiC64
-offers the folder `share/` as the network share: it holds the System Folder
-and the applications, ready-made, so `./build.sh` is only needed after
-changing the source. `desktop64.d64` holds only BOOT.
+offers two folders: `flash/` as its internal flash (the startup disk, with
+the System Folder and the applications, ready-made, so `./build.sh` is only
+needed after changing the source) and `share/` as a network share called
+Public. `desktop64.d64` holds only BOOT.
 
-The share is an ordinary folder: copy files in on the Mac and they are there
-on the C64. To use a real network share in the emulator, mount it in macOS
-and point Frodo at it (`WiC64Share=/Volumes/...` in `run.sh`).
+Both are ordinary folders: copy files in on the Mac and they are there on
+the C64. To use a real network share in the emulator, mount it in macOS and
+point Frodo at it (`WiC64Share="Name=/Volumes/..."` in `run.sh`; several
+shares are separated by `;`).
 
 ### Using it
 
@@ -112,18 +117,23 @@ block 7    $e000-$ff3f  the hires bitmap
 ```
 
 Starting up: `LOAD` and `RUN` BOOT; it reads `System Folder/System.sys`
-through the WiC64 and jumps into it. The System loads the Interface overlay
-(for the start-up screen), then `System Folder/Finder.sys`.
+from the WiC64's flash and jumps into it. The System loads the Interface
+overlay (for the start-up screen), then `System Folder/Finder.sys`.
 
-The share, as the C64 sees it:
+The startup disk (volume 0, the flash):
 
 ```
 System Folder/System.sys      the System's core
 System Folder/Interface.ovl   overlay 1
 System Folder/Shapes.ovl      overlay 2
 System Folder/Finder.sys      the Finder
-Brickles.app, Spreadsheet.app, Shapes.app
+Brickles.app, Spreadsheet.app, Shapes.app, Read Me.txt
 ```
+
+Paths start with a volume number (`1:Documents/Notes.txt`; none means the
+flash). The Finder hides the extensions it knows (`.app`, `.txt`, `.sys`,
+`.ovl`, `.sheet`), keeps each folder's icon positions in a hidden `.finder`
+file, and the Trash in a hidden `.Trash` folder on each volume.
 
 The WiC64 speaks its usual transfer protocol; the file service adds a few
 commands to it, described in [docs/fileservice.md](docs/fileservice.md).
@@ -203,9 +213,10 @@ range.
 
 ## Known issues
 
-- The Finder's windows still show a built-in table, not the share's real
-  folders (the next step), so moved, renamed or trashed icons are forgotten
-  on Restart or when switching applications. Documents can't be saved yet.
+- The Finder uses all of blocks 3 and 4; it needs the paging planned for
+  applications before it can grow. Applications show a generic icon (their
+  own icons, read from the application files, are to come).
+- Documents can't be saved yet.
 - The ESP32 firmware for a real WiC64 isn't written yet.
 - View by Name/Date/Size/Kind, Print and Erase Disk are not implemented.
 

@@ -1,0 +1,55 @@
+450 mouse 292 26
+462 down
+466 up
+478 down
+482 up
+622 mouse 55 105
+634 down
+639 up
+679 keydown 226
+681 keydown D
+684 keyup D
+685 keyup 226
+795 shot build/v4_1.bmp
+796 mouse 123 105
+808 down
+816 mouse 144 112
+819 mouse 166 120
+822 mouse 187 128
+825 mouse 209 136
+828 mouse 231 144
+831 mouse 252 152
+834 mouse 274 160
+837 mouse 296 168
+850 up
+980 mouse 296 168
+992 down
+996 up
+1008 down
+1012 up
+1172 mouse 91 109
+1184 down
+1189 up
+1229 mouse 40 5
+1241 down
+1261 mouse 40 89
+1281 up
+1421 shot build/v4_2.bmp
+1422 mouse 157 5
+1434 down
+1454 mouse 157 73
+1474 up
+2014 mouse 292 26
+2026 down
+2030 up
+2042 down
+2046 up
+2206 shot build/v4_3.bmp
+2207 mouse 292 64
+2219 down
+2224 up
+2264 keydown 226
+2266 keydown I
+2269 keyup I
+2270 keyup 226
+2380 shot build/v4_4.bmp

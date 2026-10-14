@@ -26,6 +26,9 @@ FS_RENAME = $85
 FS_MKDIR  = $86
 FS_STAT   = $87
 FS_COPY   = $88
+FS_VOLUMES = $89
+FS_CONNECT = $8a
+FS_DISCONNECT = $8b
 
 FS_OK        = 0        ; status codes
 FS_NOTFOUND  = 16
@@ -284,13 +287,37 @@ nr_none:
 ; ---------------------------------------------------------------------
 ; The calls
 ; ---------------------------------------------------------------------
-; fs_info: total and free KB and the share's name to (fs_rptr), fs_rmax
+; fs_info: A = volume: total and free KB and its name to (fs_rptr), fs_rmax
 fs_info:
+        sta NET_REQ
         lda #0
         sta fs_dlen
         sta fs_dlen+1
-        ldx #0
+        ldx #1
         lda #FS_INFO
+        jmp net_request
+
+; fs_volumes: the list of volumes to (fs_rptr), fs_rmax
+fs_volumes:
+        lda #0
+        sta fs_dlen
+        sta fs_dlen+1
+        tax
+        lda #FS_VOLUMES
+        jmp net_request
+
+; fs_connect, fs_disconnect: A = volume
+fs_connect:
+        ldx #FS_CONNECT
+        bne +
+fs_disconnect:
+        ldx #FS_DISCONNECT
++       sta NET_REQ
+        txa
+        pha
+        jsr nr_none
+        ldx #1
+        pla
         jmp net_request
 
 ; fs_list: folder q0, entries from fs_first, at most fs_max of them, to
@@ -378,10 +405,10 @@ fs_onepath:
         pla
         jmp net_request
 
-; fs_stat: path q0 -> kind (1) and size (4) to (fs_rptr)
+; fs_stat: path q0 -> kind (1), size (4) and date (2) to (fs_rptr)
 fs_stat:
         jsr nr_none
-        lda #5
+        lda #7
         sta fs_rmax
         ldx #0
         jsr nr_path0

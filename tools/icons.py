@@ -42,6 +42,47 @@ ICONS['disk'] = """
 ####################
 """
 
+ICONS['share'] = """
+####################
+#..................#
+#.################.#
+#.#..............#.#
+#.################.#
+#..................#
+#.##.........####..#
+#.##.........####..#
+#..................#
+####################
+.........##.........
+.........##.........
+.........##.........
+..################..
+..#..............#..
+..################..
+"""
+
+ICONS['app'] = """
+.........##.........
+........#..#........
+.......#....#.......
+......#......#......
+.....#...##...#.....
+....#...#..#...#....
+...#...#....#...#...
+..#...#..##..#...#..
+.#...#..#..#..#...#.
+#...#..#....#..#...#
+.#...#..#..#..#...#.
+..#...#..##..#...#..
+...#...#....#...#...
+....#...#..#...#....
+.....#...##...#.....
+......#......#......
+.......#....#.......
+........#..#........
+.........##.........
+"""
+
 ICONS['trash'] = """
 ......#####......
 ......#...#......
@@ -685,7 +726,10 @@ def hexrow(data):
 
 # Desk accessory icons: not on the disk until desk accessories come back
 # as files.
-UNUSED_ICONS = {'calc', 'notepad', 'puzzle', 'clock', 'cpanel', 'readme'}
+UNUSED_ICONS = {'calc', 'notepad', 'puzzle', 'clock', 'cpanel', 'readme',
+                # applications' own icons: for when the Finder reads them from
+                # the application files
+                'finder', 'clipboard', 'scrapbook', 'paint', 'brickles', 'sheet'}
 
 SYSTEM_ICONS = {'caution', 'stop', 'note', 'arrowup', 'arrowdn', 'arrowlt', 'arrowrt', 'grow', 'radio', 'radioon',
                 'c64logo', 'happymac'}
@@ -718,8 +762,7 @@ def main():
             out.append("        !byte " + hexrow(to_bytes(outline, wb)))
         preview.append((img, mask, outline, w, h))
 
-    for name, rows in SMALL.items():
-        out_fin.append(f"sicon_{name}: !byte " + hexrow(to_bytes([[c == '#' for c in r] for r in rows], 1)) + ",0")
+    # (SMALL: small icons for View by Small Icon, not used yet)
 
     # the desktop patterns are public data: patterns.asm, next to the
     # System's icons, is included in src/public.asm

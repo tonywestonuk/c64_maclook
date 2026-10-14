@@ -38,7 +38,7 @@ JT_SLOTS   = 128
         jmp text_width          ; twidth = width of tstr in font
         jmp draw_centred_at     ; A/Y = string, X = y in the content: centred across it
         jmp draw_icon           ; icon iptr at tx,ty, iflags = ICON_
-        jmp wrap_draw           ; text q3 word wrapped at wr_x,wr_y, wr_w wide ('|' = new line)
+        jmp wrap_draw           ; text q3 word wrapped at wr_x,wr_y, wr_w wide ('|' = new line); moves q3
 ; --- the pointer
         jmp hide_cursor         ; hide the pointer
         jmp show_cursor         ; show it again
@@ -109,7 +109,7 @@ JT_SLOTS   = 128
         jmp frame_rrect         ; outline of rx1..ry2 with corners of radius A
         jmp fill_rrect          ; rx1..ry2 with corners of radius A, filled
 ; --- files on the network share (docs/fileservice.md); carry set on error, A = status
-        jmp fs_info             ; total KB, free KB and the share's name to (fs_rptr)
+        jmp fs_info             ; A = volume: total KB, free KB and its name to (fs_rptr)
         jmp fs_list             ; folder q0: entries from fs_first, at most fs_max, to (fs_rptr)
         jmp fs_read             ; fs_len bytes at fs_off of file q0 to (fs_rptr)
         jmp fs_load             ; program file q0 to the address in its first two bytes
@@ -118,7 +118,10 @@ JT_SLOTS   = 128
         jmp fs_rename           ; rename or move q0 to q1
         jmp fs_copy             ; copy file q0 to q1
         jmp fs_mkdir            ; new folder q0
-        jmp fs_stat             ; kind (1) and size (4) of q0 to (fs_rptr)
+        jmp fs_stat             ; kind (1), size (4) and date (2) of q0 to (fs_rptr)
+        jmp fs_volumes          ; the volumes: number, kind, connected, KB, free KB, name
+        jmp fs_connect          ; A = volume: connect a network share
+        jmp fs_disconnect       ; A = volume: disconnect it
 
 !if * > JUMP_TABLE + JT_SLOTS*3 { !error "jump table full" }
         !fill JUMP_TABLE + JT_SLOTS*3 - *, $60
