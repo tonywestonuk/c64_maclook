@@ -4,7 +4,6 @@
 
 MENUBAR_LINE = 11       ; black line under the menu bar
 DESK_Y1      = 12       ; first desktop row
-NUM_MENUS    = 5
 MAX_ITEMS    = 12
 ITEM_H       = 11
 SEP_H        = 5
@@ -22,8 +21,6 @@ menu_lists:
 menu_tx:    !fill NUM_MENUS*2      ; title text x
 menu_hx1:   !fill NUM_MENUS*2      ; highlight rect
 menu_hx2:   !fill NUM_MENUS*2
-menu_flags: !fill NUM_MENUS*16     ; MF_ flags per item
-menu_blinks: !byte 3
 
 ; menu state while tracking
 mn_cur:   !byte $ff             ; open menu

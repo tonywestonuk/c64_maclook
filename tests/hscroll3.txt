@@ -1,0 +1,64 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+602 mouse 269 173
+614 down
+622 mouse 269 166
+625 mouse 269 159
+628 mouse 269 153
+631 mouse 269 146
+634 mouse 269 139
+637 mouse 269 133
+640 mouse 269 126
+643 mouse 269 120
+656 up
+706 mouse 269 52
+718 down
+726 mouse 269 58
+729 mouse 269 64
+732 mouse 269 70
+735 mouse 269 76
+738 mouse 269 82
+741 mouse 269 88
+744 mouse 269 94
+747 mouse 269 100
+760 up
+810 mouse 269 120
+822 down
+830 mouse 247 120
+833 mouse 226 120
+836 mouse 205 120
+839 mouse 184 120
+842 mouse 163 120
+845 mouse 142 120
+848 mouse 121 120
+851 mouse 100 120
+864 up
+914 mouse 40 116
+926 down
+934 mouse 48 116
+937 mouse 57 116
+940 mouse 66 116
+943 mouse 75 116
+946 mouse 83 116
+949 mouse 92 116
+952 mouse 101 116
+955 mouse 110 116
+968 up
+1038 dump build/h3_a.bin
+1039 shot build/h3_a.bmp
+1040 mouse 84 58
+1052 down
+1060 mouse 81 58
+1063 mouse 79 58
+1066 mouse 76 58
+1069 mouse 74 58
+1072 mouse 71 58
+1075 mouse 69 58
+1078 mouse 66 58
+1081 mouse 64 58
+1094 up
+1174 dump build/h3_b.bin
+1175 shot build/h3_b.bmp

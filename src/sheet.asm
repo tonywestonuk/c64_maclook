@@ -1154,7 +1154,7 @@ ss_fmt:
 ; Drawing (normal zero page again)
 ; ---------------------------------------------------------------------
 ; local rect: A = x1, X = y1, Y = x2, t7 = y2 (x below 256)
-ss_rect = cp_rect
+ss_rect = content_rect
 
 ; local rect with 16 bit x: sl_x1, sl_y1, sl_x2, sl_y2 -> rx..ry
 sl_x1:  !word 0
@@ -1727,8 +1727,7 @@ ss_select:
         sta ss_pending
 .vis:   lda ss_pending
         beq .frame
-        lda key_head            ; more keys queued: later
-        cmp key_tail
+        jsr key_pending         ; more keys queued: later
         bne .out
 ss_flush:                       ; the deferred redraw
         lda #0
@@ -1980,8 +1979,7 @@ ss_idle:
         bne .out
         lda ss_pending          ; a scroll waiting for the keys to stop
         beq +
-        lda key_head
-        cmp key_tail
+        jsr key_pending
         bne .out
         jmp ss_flush
 +
@@ -1989,7 +1987,7 @@ ss_idle:
         beq .out
         inc ss_ctime
         lda ss_ctime
-        cmp np_blink
+        cmp caret_blink
         bcc .out
         lda #0
         sta ss_ctime
@@ -2268,7 +2266,7 @@ ss_about_draw:
 
 !zone ss_update_menus
 ss_update_menus:
-        ; Edit: a desk accessory in front decides, otherwise the cell
+        ; Edit: the cell, unless a System window (an alert) is in front
         jsr front_win
         cpx #$ff
         beq .sheet
@@ -2278,14 +2276,7 @@ ss_update_menus:
         ldy #0
         sty u1
         sty u2
-        cmp #CL_NOTEPAD
-        bne +
-        inc u1
-        inc u2
-+       cmp #CL_CALC
-        bne +
-        inc u2
-+       jmp .edit
+        jmp .edit
 .sheet: lda #1
         sta u1                  ; cut / copy / clear
         lda clip_len

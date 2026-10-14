@@ -1,0 +1,40 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+602 mouse 150 35
+614 down
+622 mouse 150 32
+625 mouse 150 30
+628 mouse 150 28
+631 mouse 150 26
+634 mouse 150 23
+637 mouse 150 21
+640 mouse 150 19
+643 mouse 150 17
+656 up
+766 shot build/wm_1.bmp
+767 mouse 269 155
+779 down
+787 mouse 256 155
+790 mouse 244 155
+793 mouse 231 155
+796 mouse 219 155
+799 mouse 206 155
+802 mouse 194 155
+805 mouse 181 155
+808 mouse 169 155
+821 up
+931 mouse 100 17
+943 down
+951 mouse 107 22
+954 mouse 115 27
+957 mouse 122 33
+960 mouse 130 38
+963 mouse 137 43
+966 mouse 145 49
+969 mouse 152 54
+972 mouse 160 60
+985 up
+1095 shot build/wm_2.bmp

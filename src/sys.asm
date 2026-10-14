@@ -715,6 +715,13 @@ key_mods: !fill 16
 ; get_key: returns Z=1 if no key, else A = character / key code,
 ; X = modifiers.  Command-key combinations return the plain letter.
 !zone get_key
+; key_pending: A = 0 (Z set) if no key is waiting
+key_pending:
+        lda key_head
+        sec
+        sbc key_tail
+        rts
+
 get_key:
         ldx key_tail
         cpx key_head
@@ -879,7 +886,6 @@ wait_click_or_key:
 ; ---------------------------------------------------------------------
 ; Beep (the classic "Simple Beep"): square wave, short envelope
 ; ---------------------------------------------------------------------
-beep_vol:  !byte 5          ; 0..7, set in the Control Panel
 beep_time: !byte 0
 
 !zone beep

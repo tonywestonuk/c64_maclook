@@ -34,7 +34,8 @@ about_draw:
         sta tmode
         lda #<str_about1
         ldy #>str_about1
-        jsr draw_centred_line
+        ldx #4
+        jsr draw_centred_at
         ; picture: hills under a sky
         jsr about_picture
         lda #1

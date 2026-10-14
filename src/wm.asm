@@ -6,7 +6,6 @@
 ; desktop and every window intersecting that rectangle.
 ; =====================================================================
 
-MAXWIN  = 8
 TITLE_H = 11            ; title bar rows y1..y1+10 (line at y1+10)
 SB_W    = 10            ; scroll bar width incl. its dividing line
 
@@ -30,6 +29,11 @@ P_DOWN    = 7
 P_PGUP    = 8
 P_PGDN    = 9
 P_THUMB   = 10
+P_LEFT    = 11            ; horizontal scroll bar: P_UP..P_THUMB + 5
+P_RIGHT   = 12
+P_PGLEFT  = 13
+P_PGRIGHT = 14
+P_HTHUMB  = 15
 
 ; class methods
 M_DRAW  = 0
@@ -44,55 +48,69 @@ M_SCROLL = 7            ; mouse down in a scroll bar, part in win_part_hit
 ; window classes.  System classes are below CL_APPBASE; classes from
 ; CL_APPBASE up are looked up in the application's class table.
 CL_DIALOG  = 0
-CL_CALC    = 1
-CL_PUZZLE  = 2
-CL_CLOCK   = 3
-CL_NOTEPAD = 4
-CL_CPANEL  = 5
-CL_KEYCAPS = 6
 CL_APPBASE = $10
 
 class_table:            ; draw, click, key, idle, close, edit, resize, scroll
         !word dialog_draw, nop_method, nop_method, nop_method, nop_method, nop_method, nop_method, nop_method
-        !word calc_draw, calc_click, calc_key, nop_method, calc_close, calc_edit, nop_method, nop_method
-        !word puz_draw, puz_click, nop_method, nop_method, puz_close, nop_method, nop_method, nop_method
-        !word clock_draw, nop_method, nop_method, clock_idle, clock_close, nop_method, nop_method, nop_method
-        !word np_draw, np_click, np_key, np_idle, np_close, np_edit, nop_method, nop_method
-        !word cp_draw, cp_click, nop_method, nop_method, cp_close, nop_method, nop_method, nop_method
-        !word kc_draw, nop_method, kc_key, kc_idle, kc_close, nop_method, nop_method, nop_method
 
-w_used:  !fill MAXWIN
-w_x1l:   !fill MAXWIN
-w_x1h:   !fill MAXWIN
-w_y1:    !fill MAXWIN
-w_x2l:   !fill MAXWIN
-w_x2h:   !fill MAXWIN
-w_y2:    !fill MAXWIN
-w_flags: !fill MAXWIN
-w_class: !fill MAXWIN
-w_data:  !fill MAXWIN
-w_titl:  !fill MAXWIN
-w_tith:  !fill MAXWIN
-w_zx1l:  !fill MAXWIN    ; saved rect for the zoom box
-w_zx1h:  !fill MAXWIN
-w_zy1:   !fill MAXWIN
-w_zx2l:  !fill MAXWIN
-w_zx2h:  !fill MAXWIN
-w_zy2:   !fill MAXWIN
-w_zoomed: !fill MAXWIN
-w_scroll: !fill MAXWIN   ; vertical scroll offset in pixels
-w_maxscr: !fill MAXWIN   ; largest scroll offset (0 = no scrolling)
-w_view:   !fill MAXWIN   ; folder view mode
-
-zlist:  !fill MAXWIN     ; window ids, front first
-zcount: !byte 0
-
-cur_win: !byte 0         ; window whose method is running
-wc_x1:  !word 0          ; content rect of cur_win
-wc_y1:  !byte 0
-wc_x2:  !word 0
-wc_y2:  !byte 0
 rr_skip: !byte $ff       ; window redraw_region leaves out
+
+; ---------------------------------------------------------------------
+; content_rect: rx1..ry2 = content origin + (A, X) .. + (Y, t7), using
+; wc_* (the content rect of the window whose method is running)
+; ---------------------------------------------------------------------
+content_rect:
+        sta t4
+        stx t5
+        sty t6
+        clc
+        lda wc_x1
+        adc t4
+        sta rx1
+        lda wc_x1+1
+        adc #0
+        sta rx1+1
+        clc
+        lda wc_x1
+        adc t6
+        sta rx2
+        lda wc_x1+1
+        adc #0
+        sta rx2+1
+        lda wc_y1
+        clc
+        adc t5
+        sta ry1
+        lda wc_y1
+        clc
+        adc t7
+        sta ry2
+        rts
+
+; win_refresh: redraw the content of window X correctly even if other
+; windows overlap it
+win_refresh:
+        stx t7
+        jsr win_get_content
+        lda #$ff
+        sta rr_skip
+        jmp redraw_region
+
+; win_track: X = window, A = 0 -> rx1..ry2 = the track of its vertical
+; scroll bar (between the arrows), else of its horizontal one
+win_track:
+        pha
+        stx wd_id
+        jsr win_get_rect
+        ldy #5
+-       lda rx1,y
+        sta wd_x1,y
+        dey
+        bpl -
+        pla
+        beq +
+        jmp hsb_track_rect
++       jmp sb_track_rect
 
 ; ---------------------------------------------------------------------
 ; win_alloc: X = free window id, carry set if none
@@ -110,6 +128,8 @@ win_alloc:
 +       lda #0
         sta w_scroll,x
         sta w_maxscr,x
+        sta w_hscroll,x
+        sta w_hmax,x
         sta w_zoomed,x
         sta w_view,x
         sta w_data,x
@@ -703,7 +723,9 @@ draw_scrollbars:
         jsr frame_rect
 .nov:   lda u6
         and #WF_HSCROLL
-        beq .noh
+        bne +
+        jmp .noh
++       jsr hsb_bar_rect        ; the line above the bar
         lda #1
         ldy #0
         jsr wd_rx
@@ -714,12 +736,80 @@ draw_scrollbars:
         lda wd_x2+1
         sbc #0
         sta rx2+1
-        lda wd_y2
-        sec
-        sbc #SB_W
-        sta ry1
+        dec ry1
+        lda ry1
         sta ry2
         jsr fill_black
+        jsr hsb_bar_rect        ; the bar, white
+        jsr fill_white
+        lda wd_act
+        bne +
+        jmp .noh
++       ldx wd_id
+        lda w_hmax,x
+        bne +
+        jmp .noh
++       ; arrows, grey track, thumb
+        jsr hsb_track_rect
+        lda #<pat_gray
+        ldy #>pat_gray
+        jsr set_pat_copy
+        jsr fill_rect
+        jsr hsb_track_rect      ; lines left and right of the track
+        lda rx1
+        bne +
+        dec rx1+1
++       dec rx1
+        lda rx1
+        sta rx2
+        lda rx1+1
+        sta rx2+1
+        jsr fill_black
+        jsr hsb_track_rect
+        inc rx2
+        bne +
+        inc rx2+1
++       lda rx2
+        sta rx1
+        lda rx2+1
+        sta rx1+1
+        jsr fill_black
+        ; left arrow
+        jsr hsb_bar_rect
+        lda rx1
+        sta tx
+        lda rx1+1
+        sta tx+1
+        lda ry1
+        sta ty
+        lda #0
+        sta ty+1
+        lda #ICON_PLAIN
+        sta iflags
+        lda #<icon_arrowlt
+        sta iptr
+        lda #>icon_arrowlt
+        sta iptr+1
+        jsr draw_icon
+        ; right arrow
+        jsr hsb_track_rect
+        clc
+        lda rx2
+        adc #2
+        sta tx
+        lda rx2+1
+        adc #0
+        sta tx+1
+        lda #<icon_arrowrt
+        sta iptr
+        lda #>icon_arrowrt
+        sta iptr+1
+        jsr draw_icon
+        ; thumb
+        jsr hsb_thumb_rect
+        jsr fill_white
+        jsr set_black
+        jsr frame_rect
 .noh:   lda u6
         and #WF_GROW
         beq .nog
@@ -776,7 +866,8 @@ sb_track_rect:
         sta ry2
         rts
 
-; thumb position = track top + (track_len - 9) * scroll / maxscroll
+; The thumb covers the lines at the ends of the track at either end of
+; its travel: top = track top - 1 + (track_len - 7) * scroll / maxscroll
 !zone sb_thumb_rect
 sb_thumb_rect:
         jsr sb_track_rect
@@ -784,14 +875,30 @@ sb_thumb_rect:
         sec
         sbc ry1
         sec
-        sbc #8                  ; travel
+        sbc #6                  ; travel
         sta t0
         ldx wd_id
+        jsr sb_scale
+        dec ry1
+        lda ry1
+        clc
+        adc t3
+        sta ry1
+        clc
+        adc #8
+        sta ry2
+        lda #SB_W
+        ldy #0
+        jmp wd_rxr
+
+; t3 = t0 * scroll / maxscroll, for window X (X+W_H: the horizontal bar)
+!zone sb_scale
+sb_scale:
         lda w_scroll,x
         sta t1
         lda w_maxscr,x
         sta t2
-        ; t3 = t0 * t1 / t2 (8 bit, via repeated subtraction of a 16 bit product)
+        ; 8 bit, via repeated subtraction of a 16 bit product
         lda #0
         sta t4
         sta t5
@@ -818,16 +925,121 @@ sb_thumb_rect:
         sty t4
         inc t3
         jmp -
-+       lda ry1
-        clc
-        adc t3
-        sta ry1
-        clc
-        adc #8
-        sta ry2
-        lda #SB_W
++       rts
+
+; the horizontal scroll bar, inside its lines: x1+1 .. the vertical bar
+!zone hsb_bar_rect
+hsb_bar_rect:
+        lda #1
         ldy #0
-        jmp wd_rxr
+        jsr wd_rx
+        ldx wd_id
+        lda w_flags,x
+        and #WF_VSCROLL|WF_GROW
+        beq +
+        lda #SB_W+1
+        ldy #SB_W+1
+        jsr .x2
+        jmp ++
++       lda #1
+        ldy #1
+        jsr .x2
+++      lda wd_y2
+        sec
+        sbc #SB_W-1
+        sta ry1
+        lda wd_y2
+        sec
+        sbc #1
+        sta ry2
+        rts
+.x2:    sty t1                  ; rx2 = wd_x2 - Y
+        sec
+        lda wd_x2
+        sbc t1
+        sta rx2
+        lda wd_x2+1
+        sbc #0
+        sta rx2+1
+        rts
+
+; track of the horizontal scroll bar (between the arrows)
+hsb_track_rect:
+        jsr hsb_bar_rect
+        clc
+        lda rx1
+        adc #10
+        sta rx1
+        bcc +
+        inc rx1+1
++       sec
+        lda rx2
+        sbc #10
+        sta rx2
+        bcs +
+        dec rx2+1
++       rts
+
+; thumb of the horizontal bar.  The track can be over 255 pixels long,
+; then the travel is worked out at half scale.
+!zone hsb_thumb_rect
+.half:  !byte 0
+hsb_thumb_rect:
+        jsr hsb_track_rect
+        sec
+        lda rx2
+        sbc rx1
+        sta t0
+        lda rx2+1
+        sbc rx1+1
+        sta t6
+        sec
+        lda t0
+        sbc #6                  ; travel
+        sta t0
+        bcs +
+        dec t6
++       lda t6
+        sta .half
+        beq +
+        lsr t6
+        ror t0
++       lda wd_id
+        clc
+        adc #W_H
+        tax
+        jsr sb_scale
+        lda #0
+        sta t6
+        lda .half
+        beq +
+        asl t3
+        rol t6
++       lda rx1                 ; from the line left of the track
+        bne +
+        dec rx1+1
++       dec rx1
+        clc
+        lda rx1
+        adc t3
+        sta rx1
+        lda rx1+1
+        adc t6
+        sta rx1+1
+        clc
+        lda rx1
+        adc #8
+        sta rx2
+        lda rx1+1
+        adc #0
+        sta rx2+1
+        lda wd_y2
+        sec
+        sbc #SB_W
+        sta ry1
+        lda wd_y2
+        sta ry2
+        rts
 
 ; ---------------------------------------------------------------------
 ; redraw_region: repaint desktop + windows inside rx1..ry2
@@ -1210,12 +1422,16 @@ win_at_mouse:
 
 ; carry clear if the mouse is inside rx1..ry2
 mouse_in_rect:
+        lda rx2+1               ; x is signed
+        bmi .no
+        lda rx1+1
+        bmi +
         lda mouse_x
         cmp rx1
         lda mouse_x+1
         sbc rx1+1
         bcc .no
-        lda rx2
++       lda rx2
         cmp mouse_x
         lda rx2+1
         sbc mouse_x+1
@@ -1293,7 +1509,7 @@ win_part:
 +       ldx wp_id
         lda w_flags,x
         and #WF_VSCROLL
-        beq .content
+        beq .hbar
         lda #SB_W
         ldy #0
         jsr wd_rxr
@@ -1302,10 +1518,12 @@ win_part:
         lda wd_y2
         sta ry2
         jsr mouse_in_rect
-        bcs .content
+        bcs .hbar
         ldx wp_id
         lda w_maxscr,x
-        beq .none
+        bne .bf1509
+        jmp .none
+.bf1509:
         lda wd_y1
         clc
         adc #TITLE_H+10
@@ -1332,6 +1550,51 @@ win_part:
         lda #P_PGDN
         rts
 +       lda #P_THUMB
+        rts
+.hbar:  ldx wp_id
+        lda w_flags,x
+        and #WF_HSCROLL
+        beq .content
+        lda wd_y2
+        sec
+        sbc #SB_W
+        cmp mouse_y
+        beq +
+        bcs .content            ; above the bar
++       lda w_hmax,x
+        beq .none
+        stx wd_id
+        jsr hsb_track_rect
+        lda mouse_x
+        cmp rx1
+        lda mouse_x+1
+        sbc rx1+1
+        bcs +
+        lda #P_LEFT
+        rts
++       lda rx2
+        cmp mouse_x
+        lda rx2+1
+        sbc mouse_x+1
+        bcs +
+        lda #P_RIGHT
+        rts
++       jsr hsb_thumb_rect
+        lda mouse_x
+        cmp rx1
+        lda mouse_x+1
+        sbc rx1+1
+        bcs +
+        lda #P_PGLEFT
+        rts
++       lda rx2
+        cmp mouse_x
+        lda rx2+1
+        sbc mouse_x+1
+        bcs +
+        lda #P_PGRIGHT
+        rts
++       lda #P_HTHUMB
         rts
 .none:  lda #P_NONE
         rts
@@ -1837,11 +2100,6 @@ win_zoom:
 ; Zoom rects (the Finder's opening/closing animation)
 ; zr_* = small rect (icon), rx1..ry2 = window rect
 ; ---------------------------------------------------------------------
-zr_on:  !byte 0
-zr_x1:  !word 0
-zr_y1:  !byte 0
-zr_x2:  !word 0
-zr_y2:  !byte 0
 zb_r:   !fill 6
 zr_dir: !byte 0
 zr_step: !byte 0

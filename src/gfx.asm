@@ -40,16 +40,7 @@ col8_lo:  !for c, 0, 40 { !byte <(c*8) }
 col8_hi:  !for c, 0, 40 { !byte >(c*8) }
 scol_lo:  !for k, 0, STRIP_W { !byte <(STRIP + k*STRIP_H) }
 scol_hi:  !for k, 0, STRIP_W { !byte >(STRIP + k*STRIP_H) }
-lmask_tab: !byte $ff,$7f,$3f,$1f,$0f,$07,$03,$01
-rmask_tab: !byte $80,$c0,$e0,$f0,$f8,$fc,$fe,$ff
-bit_tab:   !byte $80,$40,$20,$10,$08,$04,$02,$01
 
-pat_black: !byte $ff,$ff,$ff,$ff,$ff,$ff,$ff,$ff
-pat_white: !byte $00,$00,$00,$00,$00,$00,$00,$00
-pat_gray:  !byte $aa,$55,$aa,$55,$aa,$55,$aa,$55
-pat_ltgray: !byte $88,$22,$88,$22,$88,$22,$88,$22
-pat_even:  !byte $ff,$00,$ff,$00,$ff,$00,$ff,$00
-pat_odd:   !byte $00,$ff,$00,$ff,$00,$ff,$00,$ff
 
 fmlast: !byte 0
 andm:   !fill 8
@@ -177,7 +168,11 @@ clip_pop:                       ; preserves X and Y
 ; clip = clip AND rect.  Returns carry set if the result is empty.
 !zone clip_rect
 clip_rect:
+        lda rx2+1               ; x is signed
+        bmi .empty
         ; clx1 = max(clx1, rx1)
+        lda rx1+1
+        bmi +
         lda clx1
         cmp rx1
         lda clx1+1
@@ -223,17 +218,21 @@ clip_rect:
 ; Does rect intersect the clip rectangle?  Carry clear = yes.
 !zone rect_visible
 rect_visible:
+        lda rx2+1               ; x is signed: right edge left of 0 -> no
+        bmi .no
         lda rx2                 ; rx2 < clx1 -> no
         cmp clx1
         lda rx2+1
         sbc clx1+1
         bcc .no
+        lda rx1+1
+        bmi +
         lda clx2                ; clx2 < rx1 -> no
         cmp rx1
         lda clx2+1
         sbc rx1+1
         bcc .no
-        lda ry2
++       lda ry2
         cmp cly1
         bcc .no
         lda cly2
@@ -271,15 +270,20 @@ set_pat_copy:
 ; ---------------------------------------------------------------------
 !zone fill_rect
 fill_rect:
-        lda rx1                 ; fx1 = max(rx1, clx1)
+        lda rx2+1               ; x is signed: right edge left of 0 -> nothing
+        bpl +
+        rts
++       lda rx1                 ; fx1 = max(rx1, clx1)
         sta fx1
         lda rx1+1
         sta fx1+1
+        bmi .x1clip
         lda fx1
         cmp clx1
         lda fx1+1
         sbc clx1+1
         bcs +
+.x1clip:
         lda clx1
         sta fx1
         lda clx1+1
@@ -846,12 +850,7 @@ draw_text:
         lsr
         beq .none
         sta bnc
-        lda tx+1
-        lsr
-        lda tx
-        ror
-        lsr
-        lsr
+        jsr tx_col
         sta bcol
         lda ty
         sta by
@@ -871,9 +870,28 @@ draw_str:
         sty tstr+1
         jmp draw_text
 
+; tx_col: A = byte column of tx, signed (tx = -256..511).  Text and
+; icons can start left of the screen; blit_strip skips those columns.
+!zone tx_col
+tx_col:
+        lda tx+1
+        lsr
+        lda tx
+        ror                     ; tx / 2, -128..255
+        bit tx+1
+        bpl +
+        sec
+        ror
+        sec
+        ror
+        rts
++       lsr
+        lsr
+        rts
+
 ; ---------------------------------------------------------------------
 ; blit_strip: copy strip columns 0..bnc-1, rows 0..bnr-1 to the screen
-; at column bcol, row by (16 bit signed), mode bmode, clipped.
+; at column bcol (signed), row by (16 bit signed), mode bmode, clipped.
 ; ---------------------------------------------------------------------
 blit_fns:
         !word bl_or, bl_xor, bl_bic, bl_mask, bl_copy, bl_maskgray
@@ -975,6 +993,7 @@ blit_strip:
         lda bcol
         adc bk
         sta bsc
+        bmi .nextc              ; left of the screen
         cmp bcl
         bcc .nextc
         cmp bcr
@@ -1228,12 +1247,7 @@ draw_icon:
         sta render_strip_sh1+2
         adc #8
         sta render_strip_sh2+2
-        lda tx+1
-        lsr
-        lda tx
-        ror
-        lsr
-        lsr
+        jsr tx_col
         sta bcol
         lda ty
         sta by

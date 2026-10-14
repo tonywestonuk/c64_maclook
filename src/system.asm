@@ -1,22 +1,25 @@
 ; =====================================================================
 ; SYSTEM - the toolbox of the Commodore 64 desktop (a System 4 /
 ; Finder 5 look-alike): hardware, events, QuickDraw-style graphics,
-; menus, windows, dialogs, desk accessories, and the loader that brings
-; the Finder in from the 1541.
+; menus, windows, dialogs, and the loader that brings applications in
+; from the 1541.  It boots, then loads the Finder.
 ;
-; Memory map
-;   $0002-$008f  zero page (ours; $90-$ff stay the KERNAL's for disk I/O)
-;   $0400-$04ff  BASIC's zero page, saved for the floating point ROM
-;   $0500-$05ff  the Clipboard
-;   $0801-       SYSTEM (this file)
-;   FINDER_BASE  the Finder, loaded from disk (up to $9fff)
-;   $a000-$afff  strip buffers (text / icon blitting)
-;   $b000-$bfff  shift tables
-;   $c000-$c3ff  colour matrix + sprite pointers (VIC bank 3)
-;   $c400-$c7ff  cursor sprites
-;   $c800-$cfff  save-under buffer for menus
-;   $d000-$dfff  I/O
-;   $e000-$ff3f  hires bitmap
+; Applications use it only through the jump table at $0810 and the
+; public data after it (see src/jumptab.asm, src/public.asm and the
+; generated build/sysapi.asm), so they need not be rebuilt for a new
+; System.
+;
+; Memory map: the 64K are eight 8K blocks
+;   0-2  $0000-$5fff  zero page, stack, KERNAL variables, BASIC's zero
+;                     page copy ($0400), the Clipboard ($0500), then
+;                     SYSTEM from $0801: jump table, public data, code
+;   3    $6000-$7fff  the application's core block (APP_BASE)
+;   4    $8000-$9fff  the application's page block
+;   5    $a000-$bfff  QuickDraw buffers: strips ($a000), shift tables ($b000)
+;   6    $c000-$cfff  colour matrix, sprite pointers, cursor sprites ($c400),
+;                     menu save-under ($c800)
+;        $d000-$dfff  I/O
+;   7    $e000-$ff3f  hires bitmap
 ; =====================================================================
 !cpu 6510
 !to "build/system.prg", cbm
@@ -27,6 +30,10 @@
         !byte $0b,$08,$0a,$00,$9e       ; 10 SYS 2061
         !text "2061"
         !byte 0,0,0
+        jmp start                       ; $080d
+
+!source "src/jumptab.asm"               ; $0810
+!source "src/public.asm"
 
 !zone start
 start:  sei
@@ -67,24 +74,22 @@ start:  sei
 !source "src/boot.asm"
 !source "src/dialog.asm"
 !source "src/fp.asm"
-!source "src/da_calc.asm"
-!source "src/da_puzzle.asm"
-!source "src/da_clock.asm"
-!source "src/da_notepad.asm"
-!source "src/da_cpanel.asm"
 !source "src/sysstrings.asm"
 
 !source "build/fonts.asm"
 !source "build/icons_sys.asm"
 
-sprite_data:
-!source "build/sprites.asm"
-
 
 zp_basic = $0400                ; (the C64's unused text screen)
 
 system_end:
-FINDER_BASE = $6800             ; where applications are loaded
-!if system_end > FINDER_BASE {
-        !error "SYSTEM overlaps FINDER_BASE"
+APP_BASE  = $6000               ; block 3: applications are loaded here
+PAGE_BASE = $8000               ; block 4: an application's page block
+!if system_end > APP_BASE {
+        !error "SYSTEM overlaps APP_BASE"
 }
+
+; Pointer shapes, copied to $c400 by start.  They are loaded after the
+; end of SYSTEM, where the Finder is then loaded over them.
+sprite_data:
+!source "build/sprites.asm"

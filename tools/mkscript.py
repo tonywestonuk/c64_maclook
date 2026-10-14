@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tiny DSL -> Frodo TestInput script.
-Lines:  wait N | move x y | click x y | dclick x y | drag x1 y1 x2 y2 | menu mx itemy |
+Lines:  wait N | move x y | click x y | hold x y N | dclick x y | drag x1 y1 x2 y2 | menu mx itemy |
         key NAME | type TEXT | shot NAME | dump NAME
 Frame counter advances automatically."""
 import sys
@@ -17,6 +17,8 @@ for line in open(sys.argv[1]):
     elif op == "move": emit(f"mouse {a[0]} {a[1]}"); f += 12
     elif op == "click":
         emit(f"mouse {a[0]} {a[1]}"); f += 12; emit("down"); f += 5; emit("up"); f += int(a[2]) if len(a) > 2 else 40
+    elif op == "hold":
+        emit(f"mouse {a[0]} {a[1]}"); f += 12; emit("down"); f += int(a[2]); emit("up"); f += 40
     elif op == "dclick":
         emit(f"mouse {a[0]} {a[1]}"); f += 12; emit("down"); f += 4; emit("up"); f += 12; emit("down"); f += 4; emit("up"); f += 60
     elif op == "drag":

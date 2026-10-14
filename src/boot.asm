@@ -190,8 +190,6 @@ close_all_quiet:
         jmp -
 +       rts
 
-; parameter RAM: survives switching applications (high scores etc.)
-sys_pram: !fill 16
 
 ; restart: the Finder is loaded again from the disk
 !zone restart

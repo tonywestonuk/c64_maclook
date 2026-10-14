@@ -6,14 +6,6 @@ DLG_ALERT    = 0
 DLG_CUSTOM   = 1        ; drawn by dlg_custom (applications)
 DLG_SHUTDOWN = 2
 
-dlg_kind:  !byte 0
-dlg_msg:   !word 0
-dlg_icon:  !word 0
-dlg_nbtn:  !byte 1
-dlg_btn:   !word str_ok, str_cancel     ; button 0 = default (rightmost)
-dlg_win:   !byte 0
-dlg_result: !byte 0
-dlg_custom: !word 0      ; draw routine for DLG_CUSTOM
 
 ; ---------------------------------------------------------------------
 ; Alerts.  A/Y = message ('|' starts a new line)
@@ -73,8 +65,6 @@ alert_run:
 
 ; open a dialog window: A = x1 (low, x < 256), X = y1, Y = x2 low (x2 < 512,
 ; high byte from dlg_x2h), height from dlg_h.  Carry set if no window.
-dlg_x2h: !byte 1
-dlg_h:   !byte 80
 !zone dlg_open
 dlg_open:
         sta t4
@@ -339,19 +329,13 @@ push_button:
 ; Word wrapped text: q3 = text, wr_x/wr_y = top-left, wr_w = width,
 ; wr_lh = line height, font.  '|' and RETURN break lines.
 ; Leaves wr_cx/wr_cy = position just after the last character.
+; (wr_x .. wr_draw are in public.asm)
 ; ---------------------------------------------------------------------
-wr_x:   !word 0
-wr_y:   !byte 0
-wr_w:   !byte 0
-wr_lh:  !byte 0
-wr_cx:  !word 0
-wr_cy:  !byte 0
 wr_pos: !byte 0
 wr_end: !byte 0
 wr_sp:  !byte 0
 wr_wid: !byte 0
 wr_spw: !byte 0
-wr_draw: !byte 1         ; 0 = only measure
 wr_skip: !byte 0
 wr_line: !fill 64
 
@@ -510,5 +494,3 @@ draw_centred_line:
 
 
 ; the Clipboard (the System's scrap, shared by everyone)
-clip_len: !byte 0
-clip_buf = $0500

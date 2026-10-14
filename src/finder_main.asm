@@ -1,13 +1,13 @@
 ; =====================================================================
 ; FINDER - the desktop application, loaded by the System from drive 8.
-; It is linked against the System's symbol table (build/syslink.asm).
+; It uses the System only through its API (build/sysapi.asm).
 ; =====================================================================
 !cpu 6510
 !to "build/finder.prg", cbm
-!source "build/syslink.asm"
+!source "build/sysapi.asm"
 !source "src/macros.asm"
 
-* = FINDER_BASE
+* = APP_BASE
         jmp app_init            ; entry points, see events.asm
         jmp app_action
         jmp update_menus

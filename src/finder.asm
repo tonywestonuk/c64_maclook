@@ -17,35 +17,23 @@ T_APP    = 3
 T_DOC    = 4
 T_SYS    = 5
 
-APP_CALC    = 0
-APP_NOTEPAD = 1
-APP_PUZZLE  = 2
-APP_CLOCK   = 3
-APP_CPANEL  = 4
-APP_KEYCAPS = 5
-APP_README  = 6
-APP_CLIP    = 7
-APP_NONE    = 8
-APP_BRICKLES = 9
-APP_SHEET   = 10
+APP_README  = 0
+APP_CLIP    = 1
+APP_NONE    = 2
+APP_BRICKLES = 3
+APP_SHEET   = 4
 
 IC_DISK = 0
 IC_TRASH = 1
 IC_TRASHFULL = 2
 IC_FOLDER = 3
-IC_CALC = 4
-IC_NOTEPAD = 5
-IC_PUZZLE = 6
-IC_CLOCK = 7
-IC_CPANEL = 8
-IC_DOC = 9
-IC_SYSTEM = 10
-IC_FINDER = 11
-IC_CLIPBOARD = 12
-IC_SCRAPBOOK = 13
-IC_PAINT = 14
-IC_BRICKLES = 15
-IC_SHEET = 16
+IC_DOC = 4
+IC_SYSTEM = 5
+IC_FINDER = 6
+IC_CLIPBOARD = 7
+IC_SCRAPBOOK = 8
+IC_BRICKLES = 9
+IC_SHEET = 10
 
 OBJ_DISK  = 0
 OBJ_TRASH = 1
@@ -60,9 +48,8 @@ app_classes:            ; draw, click, key, idle, close, edit, resize, scroll
         !word text_draw, nop_method, nop_method, nop_method, text_close, nop_method, nop_method, nop_method
 
 icon_table:
-        !word icon_disk, icon_trash, icon_trashfull, icon_folder, icon_calc
-        !word icon_notepad, icon_puzzle, icon_clock, icon_cpanel, icon_doc
-        !word icon_system, icon_finder, icon_clipboard, icon_scrapbook, icon_paint
+        !word icon_disk, icon_trash, icon_trashfull, icon_folder, icon_doc
+        !word icon_system, icon_finder, icon_clipboard, icon_scrapbook
         !word icon_brickles, icon_sheet
 
 ; ---------------------------------------------------------------------
@@ -98,20 +85,14 @@ obj_init:
         +obj str_o_disk,    DESKTOP, 280, 16, IC_DISK, T_DISK, APP_NONE, 0, 0
         +obj str_o_trash,   DESKTOP, 284, 158, IC_TRASH, T_TRASH, APP_NONE, 0, 0
         +obj str_o_sysfold, OBJ_DISK, 18, 4, IC_FOLDER, T_FOLDER, APP_NONE, 0, 1
-        +obj str_o_calc,    OBJ_DISK, 74, 4, IC_CALC, T_APP, APP_CALC, 24, 2
-        +obj str_o_notepad, OBJ_DISK, 130, 4, IC_NOTEPAD, T_APP, APP_NOTEPAD, 30, 2
-        +obj str_o_puzzle,  OBJ_DISK, 186, 4, IC_PUZZLE, T_APP, APP_PUZZLE, 18, 3
-        +obj str_o_clock,   OBJ_DISK, 18, 40, IC_CLOCK, T_APP, APP_CLOCK, 22, 3
-        +obj str_o_readme,  OBJ_DISK, 74, 40, IC_DOC, T_DOC, APP_README, 6, 4
-        +obj str_o_empty,   OBJ_DISK, 130, 40, IC_FOLDER, T_FOLDER, APP_NONE, 0, 4
-        +obj str_o_keycaps, OBJ_DISK, 186, 40, IC_PAINT, T_APP, APP_KEYCAPS, 28, 2
-        +obj str_o_brickles, OBJ_DISK, 18, 76, IC_BRICKLES, T_APP, APP_BRICKLES, 15, 6
-        +obj str_o_sheet,   OBJ_DISK, 74, 76, IC_SHEET, T_APP, APP_SHEET, 40, 6
-        +obj str_o_system,  2, 18, 4, IC_SYSTEM, T_SYS, APP_NONE, 180, 0
-        +obj str_o_finder,  2, 74, 4, IC_FINDER, T_SYS, APP_NONE, 88, 0
-        +obj str_o_cpanel,  2, 130, 4, IC_CPANEL, T_APP, APP_CPANEL, 36, 1
-        +obj str_o_clipf,   2, 18, 40, IC_CLIPBOARD, T_DOC, APP_CLIP, 2, 5
-        +obj str_o_scrapf,  2, 74, 40, IC_SCRAPBOOK, T_SYS, APP_NONE, 40, 5
+        +obj str_o_brickles, OBJ_DISK, 74, 4, IC_BRICKLES, T_APP, APP_BRICKLES, 15, 6
+        +obj str_o_sheet,   OBJ_DISK, 130, 4, IC_SHEET, T_APP, APP_SHEET, 23, 6
+        +obj str_o_readme,  OBJ_DISK, 186, 4, IC_DOC, T_DOC, APP_README, 6, 4
+        +obj str_o_empty,   OBJ_DISK, 18, 40, IC_FOLDER, T_FOLDER, APP_NONE, 0, 4
+        +obj str_o_system,  2, 18, 4, IC_SYSTEM, T_SYS, APP_NONE, 70, 0
+        +obj str_o_finder,  2, 74, 4, IC_FINDER, T_SYS, APP_NONE, 48, 0
+        +obj str_o_clipf,   2, 130, 4, IC_CLIPBOARD, T_DOC, APP_CLIP, 2, 5
+        +obj str_o_scrapf,  2, 18, 40, IC_SCRAPBOOK, T_SYS, APP_NONE, 40, 5
 NUM_INIT_OBJ = (* - obj_init) / OBJREC
 
 sel_obj:   !byte NOOBJ
@@ -254,7 +235,7 @@ obj_icon_ptr:
 ; Geometry: where an object's icon is on the screen
 ; ---------------------------------------------------------------------
 ob_x:   !word 0          ; icon box (24x20) top-left
-ob_y:   !word 0          ; (signed)
+ob_y:   !word 0          ; (both signed: folders scroll)
 ob_win: !byte 0
 ic_x:   !word 0          ; image top-left
 ic_y:   !word 0
@@ -315,6 +296,13 @@ obj_base:
         bcc +
         inc ob_y+1
 +       ldy ob_win
+        sec
+        lda ob_x
+        sbc w_hscroll,y
+        sta ob_x
+        lda ob_x+1
+        sbc #0
+        sta ob_x+1
         sec
         lda ob_y
         sbc w_scroll,y
@@ -393,6 +381,8 @@ obj_geom:
         sbc #0
         sta lb_x1+1
         bpl +
+        ldx ob_win              ; desktop labels stay on the screen
+        bpl +
         lda #0
         sta lb_x1
         sta lb_x1+1
@@ -418,7 +408,7 @@ obj_geom:
 ; rx/ry = bounding rect of the object (after obj_geom), clamped to screen
 !zone obj_bounds
 obj_bounds:
-        ; x1 = min(ob_x, lb_x1), x2 = max(ob_x+23, lb_x2)
+        ; x1 = min(ob_x, lb_x1), x2 = max(ob_x+23, lb_x2), signed
         lda ob_x
         sta rx1
         lda ob_x+1
@@ -427,7 +417,9 @@ obj_bounds:
         cmp rx1
         lda lb_x1+1
         sbc rx1+1
-        bcs +
+        bvc +
+        eor #$80
++       bpl +
         lda lb_x1
         sta rx1
         lda lb_x1+1
@@ -443,13 +435,22 @@ obj_bounds:
         cmp lb_x2
         lda rx2+1
         sbc lb_x2+1
-        bcs +
+        bvc +
+        eor #$80
++       bpl +
         lda lb_x2
         sta rx2
         lda lb_x2+1
         sta rx2+1
-+       ; clamp x2 to 319
-        lda rx2
++       ; clamp to 0..319
+        lda rx2+1
+        bmi .off
+        lda rx1+1
+        bpl +
+        lda #0
+        sta rx1
+        sta rx1+1
++       lda rx2
         cmp #<320
         lda rx2+1
         sbc #>320
@@ -865,6 +866,8 @@ zoom_from_obj:
         sta zr_on
         jsr obj_base
         bcs +
+        lda ob_x+1              ; scrolled off the left
+        bmi +
         lda ob_x
         sta zr_x1
         lda ob_x+1
@@ -890,9 +893,15 @@ zoom_from_obj:
         sta zr_on
 +       rts
 
-; folder_layout: window wsr_id - compute the scroll range
+wsr_id: !byte 0          ; window for folder_layout
+; folder_layout: window wsr_id - compute the scroll ranges.
+; fl_moved is set if a scroll position had to change.
+fl_moved: !byte 0
+fl_need:  !word 0
 !zone folder_layout
 folder_layout:
+        lda #0
+        sta fl_moved
         ldx wsr_id
         lda w_data,x
         sta u0
@@ -929,6 +938,91 @@ folder_layout:
         cmp w_scroll,x
         bcs +
         sta w_scroll,x
+        inc fl_moved
++       ; needed width = max(right edge of icon or label) + 3
+        lda #0
+        sta fl_need
+        sta fl_need+1
+        ldx #MAXOBJ-1
+.w:     stx u3
+        lda o_parent,x
+        cmp u0
+        bne .wnext
+        ; right edge from o_x = max(23, 12 + lw - lw/2)
+        jsr obj_name_ptr
+        lda q1
+        sta tstr
+        lda q1+1
+        sta tstr+1
+        lda #1
+        sta font
+        jsr text_width
+        lda twidth+1
+        lsr
+        lda twidth
+        ror
+        sta t0
+        sec
+        lda twidth
+        sbc t0
+        clc
+        adc #12+3
+        cmp #23+3
+        bcs +
+        lda #23+3
++       ldx u3
+        clc
+        adc o_xl,x
+        sta t0
+        lda o_xh,x
+        adc #0
+        sta t1
+        lda fl_need
+        cmp t0
+        lda fl_need+1
+        sbc t1
+        bcs .wnext
+        lda t0
+        sta fl_need
+        lda t1
+        sta fl_need+1
+.wnext: ldx u3
+        dex
+        stx u3
+        bpl .w
+        ; hmax = needed - visible width, 0..255
+        ldx wsr_id
+        jsr win_get_content
+        ldx wsr_id
+        sec
+        lda wc_x2
+        sbc wc_x1
+        sta t0
+        lda wc_x2+1
+        sbc wc_x1+1
+        sta t1
+        inc t0                  ; visible width
+        bne +
+        inc t1
++       sec
+        lda fl_need
+        sbc t0
+        sta t0
+        lda fl_need+1
+        sbc t1
+        bcs +
+        lda #0
+        sta t0
+        beq ++
++       beq ++
+        lda #255
+        sta t0
+++      lda t0
+        sta w_hmax,x
+        cmp w_hscroll,x
+        bcs +
+        sta w_hscroll,x
+        inc fl_moved
 +       rts
 
 folder_close:
@@ -992,46 +1086,25 @@ folder_draw:
         lda #<fd_buf
         ldy #>fd_buf
         jsr draw_str
-        ; used / free
+        ; the other two go only where they fit: free at the right after
+        ; the item count, then used in the middle between them
+        clc                     ; fd_le = end of the item count + gap
+        lda wc_x1
+        adc #4+8
+        sta fd_le
+        lda wc_x1+1
+        adc #0
+        sta fd_le+1
+        clc
+        lda fd_le
+        adc twidth
+        sta fd_le
+        lda fd_le+1
+        adc twidth+1
+        sta fd_le+1
         jsr disk_used
         sta u0
         stx u1
-        jsr utoa
-        jsr .kbuf
-        lda #<str_indisk
-        sta q0
-        lda #>str_indisk
-        sta q0+1
-        lda #<fd_buf
-        sta q1
-        lda #>fd_buf
-        sta q1+1
-        jsr strcat
-        ; centre
-        lda #<fd_buf
-        sta tstr
-        lda #>fd_buf
-        sta tstr+1
-        jsr text_width
-        clc
-        lda wc_x1
-        adc wc_x2
-        sta tx
-        lda wc_x1+1
-        adc wc_x2+1
-        sta tx+1
-        sec
-        lda tx
-        sbc twidth
-        sta tx
-        lda tx+1
-        sbc twidth+1
-        lsr
-        sta tx+1
-        lda tx
-        ror
-        sta tx
-        jsr draw_text
         sec
         lda #<664
         sbc u0
@@ -1070,10 +1143,86 @@ folder_draw:
         lda tx
         sbc twidth
         sta tx
+        sta fd_re
         lda tx+1
         sbc twidth+1
         sta tx+1
+        sta fd_re+1
+        lda tx                  ; tx < fd_le: no room
+        cmp fd_le
+        lda tx+1
+        sbc fd_le+1
+        bvc +
+        eor #$80
++       bpl +
+        jmp .line
++       jsr draw_text
+        sec                     ; fd_re = start of free - gap
+        lda fd_re
+        sbc #8
+        sta fd_re
+        bcs +
+        dec fd_re+1
++       lda u0
+        ldx u1
+        jsr utoa
+        jsr .kbuf
+        lda #<str_indisk
+        sta q0
+        lda #>str_indisk
+        sta q0+1
+        lda #<fd_buf
+        sta q1
+        lda #>fd_buf
+        sta q1+1
+        jsr strcat
+        ; centre
+        lda #<fd_buf
+        sta tstr
+        lda #>fd_buf
+        sta tstr+1
+        jsr text_width
+        clc
+        lda wc_x1
+        adc wc_x2
+        sta tx
+        lda wc_x1+1
+        adc wc_x2+1
+        sta tx+1
+        sec
+        lda tx
+        sbc twidth
+        sta tx
+        lda tx+1
+        sbc twidth+1
+        lsr
+        sta tx+1
+        lda tx
+        ror
+        sta tx
+        lda tx                  ; starts before fd_le: no room
+        cmp fd_le
+        lda tx+1
+        sbc fd_le+1
+        bvc +
+        eor #$80
++       bmi .line
+        clc                     ; ends after fd_re: no room
+        lda tx
+        adc twidth
+        sta t0
+        lda tx+1
+        adc twidth+1
+        sta t1
+        lda fd_re
+        cmp t0
+        lda fd_re+1
+        sbc t1
+        bvc +
+        eor #$80
++       bmi .line
         jsr draw_text
+.line:
         ; double line
         lda wc_x1
         sta rx1
@@ -1135,6 +1284,8 @@ folder_draw:
         jsr strcpy
         rts
 fd_f:   !byte 0
+fd_le:  !word 0
+fd_re:  !word 0
 fd_buf: !fill 24
 
 ; count children of fd_f -> A
@@ -1210,11 +1361,16 @@ folder_click:
 folder_edit:
         rts
 
-; scroll the front folder window by A (signed)
+; scroll the front folder window by A (signed).  fs_h = 0 scrolls
+; vertically, W_H sideways.
+fs_h:   !byte 0
 !zone folder_scroll
 folder_scroll:
         sta t0
-        ldx zlist
+        lda zlist
+        clc
+        adc fs_h
+        tax
         lda w_scroll,x
         clc
         adc t0
@@ -1245,6 +1401,12 @@ folder_scroll:
 ; mouse down in a scroll bar part A of the front window
 !zone scroll_track
 scroll_track:
+        ldx #0
+        cmp #P_LEFT             ; horizontal parts are the vertical ones + 5
+        bcc +
+        sbc #P_LEFT-P_UP
+        ldx #W_H
++       stx fs_h
         sta u7
 .loop:  lda u7
         cmp #P_UP
@@ -1267,17 +1429,13 @@ scroll_track:
         jsr wait_frames
         lda mbtn
         bne .loop
-        rts
+        jmp .done
 .thumb: ; drag the thumb: scroll proportional to mouse position in the track
--       ldx zlist
-        stx wd_id
-        jsr win_get_rect
-        ldy #5
--       lda rx1,y
-        sta wd_x1,y
-        dey
-        bpl -
-        jsr sb_track_rect
+        ldx zlist
+        lda fs_h
+        jsr win_track
+        lda fs_h
+        bne .hthumb
         lda mouse_y
         sec
         sbc ry1
@@ -1288,13 +1446,47 @@ scroll_track:
         sec
         sbc ry1
         sta t1                  ; track length
-        lda t0
+        jmp .scale
+.hthumb:
+        sec
+        lda mouse_x
+        sbc rx1
+        sta t0
+        lda mouse_x+1
+        sbc rx1+1
+        sta t2
+        bcs +
+        lda #0
+        sta t0
+        sta t2
++       sec
+        lda rx2
+        sbc rx1
+        sta t1
+        lda rx2+1
+        sbc rx1+1
+        beq +                   ; over 255 pixels: half scale
+        lsr
+        ror t1
+        lsr t2
+        ror t0
++       lda t2
+        beq .scale
+        lda t1
+        sta t0
+.scale: lda t0
         cmp t1
         bcc +
         lda t1
         sta t0
 +       ; scroll = maxscr * t0 / t1
-        ldx zlist
+        lda t1
+        sta .len
+        lda zlist
+        clc
+        adc fs_h
+        sta .w
+        tax
         lda w_maxscr,x
         ldx t0
         jsr mul8
@@ -1304,7 +1496,7 @@ scroll_track:
         sta t4
 -       lda t2
         sec
-        sbc t1
+        sbc .len
         tay
         lda t3
         sbc #0
@@ -1313,7 +1505,7 @@ scroll_track:
         sty t2
         inc t4
         jmp -
-+       ldx zlist
++       ldx .w
         lda t4
         sec
         sbc w_scroll,x
@@ -1321,8 +1513,13 @@ scroll_track:
         jsr folder_scroll
 +       jsr wait_frame
         lda mbtn
-        bne .thumb
+        beq .done
+        jmp .thumb
+.done:  lda #0
+        sta fs_h
         rts
+.len:   !byte 0
+.w:     !byte 0
 
 ; ---------------------------------------------------------------------
 ; Clicking and dragging icons
@@ -1717,7 +1914,9 @@ drop_at:
         jmp move_obj
 .win:   lda w_class,x
         cmp #CL_FOLDER
-        bne .no
+        beq .bf1942
+        jmp .no
+.bf1942:
         lda u5                  ; disk and trash stay on the desktop
         cmp #T_FOLDER
         bcc .no
@@ -1752,6 +1951,12 @@ drop_at:
         lda #0
         sta fs_x
         sta fs_x+1
++       clc
+        lda fs_x
+        adc w_hscroll,x
+        sta fs_x
+        bcc +
+        inc fs_x+1
 +       lda dr_y
         sec
         sbc dr_oy
@@ -1859,13 +2064,17 @@ refresh_info:
         stx wsr_id
         jsr folder_layout
         ldx wsr_id
+        jsr win_get_rect
+        lda fl_moved            ; scrolled back: everything moved
+        bne .all
+        ldx wsr_id
         jsr win_get_content
         lda ry1
         clc
         adc #IB_H-1
         sta ry2
         jsr redraw_region
-        ; scroll bar too
+        ; scroll bars too
         ldx wsr_id
         jsr win_get_rect
         sec
@@ -1875,7 +2084,14 @@ refresh_info:
         lda rx2+1
         sbc #0
         sta rx1+1
-        jmp redraw_region
+        jsr redraw_region
+        ldx wsr_id
+        jsr win_get_rect
+        lda ry2
+        sec
+        sbc #SB_W
+        sta ry1
+.all:   jmp redraw_region
 +       rts
 
 ; free_slot: X = container -> fs_x/fs_y = first free grid cell
@@ -1956,7 +2172,6 @@ open_obj:
 .v:     !word 0
 
 app_open:
-        !word calc_open, np_open, puz_open, clock_open, cp_open, kc_open
         !word readme_open, clip_open, nop_method, brickles_launch, sheet_launch
 
 
@@ -2542,23 +2757,11 @@ update_menus:
         jsr menu_set
         ldx #MN_FILE+2           ; Print
         jsr menu_disable
-        ; Edit: depends on the front window
+        ; Edit: nothing in the Finder's own windows uses it (yet)
         lda #0
-        sta u1                  ; note pad in front
-        sta u2                  ; note pad or calculator
-        jsr front_win
-        cpx #$ff
-        beq +
-        lda w_class,x
-        cmp #CL_NOTEPAD
-        bne ++
-        inc u1
-        inc u2
-        jmp +
-++      cmp #CL_CALC
-        bne +
-        inc u2
-+       lda u1
+        sta u1
+        sta u2
+        lda u1
         ldx #MN_EDIT+2           ; Cut
         jsr menu_set
         lda u2

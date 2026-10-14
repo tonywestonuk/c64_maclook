@@ -1,7 +1,7 @@
 ; =====================================================================
 ; events.asm - the event loop, and the hooks into the application
 ;
-; An application (the Finder) is loaded at FINDER_BASE and starts with
+; An application (the Finder) is loaded at APP_BASE and starts with
 ; a table of entry points:
 ;
 ;   +0  jmp init            set up its data
@@ -17,26 +17,20 @@
 ;   +27 !text "APP!"
 ; =====================================================================
 
-APP_INIT      = FINDER_BASE+0
-APP_ACTION    = FINDER_BASE+3
-APP_UPDMENUS  = FINDER_BASE+6
-APP_DESKDRAW  = FINDER_BASE+9
-APP_DESKCLICK = FINDER_BASE+12
-APP_KEY       = FINDER_BASE+15
-APP_QUIT      = FINDER_BASE+18
-APP_CLASSES   = FINDER_BASE+21
-APP_MENUS     = FINDER_BASE+23
-APP_ABOUT     = FINDER_BASE+25
-APP_MAGIC     = FINDER_BASE+27
+APP_INIT      = APP_BASE+0
+APP_ACTION    = APP_BASE+3
+APP_UPDMENUS  = APP_BASE+6
+APP_DESKDRAW  = APP_BASE+9
+APP_DESKCLICK = APP_BASE+12
+APP_KEY       = APP_BASE+15
+APP_QUIT      = APP_BASE+18
+APP_CLASSES   = APP_BASE+21
+APP_MENUS     = APP_BASE+23
+APP_ABOUT     = APP_BASE+25
+APP_MAGIC     = APP_BASE+27
 
 ACT_NONE    = $ff
 SYS_ACT     = $40       ; actions from here up belong to the System
-SACT_CLOCK   = SYS_ACT+0
-SACT_CALC    = SYS_ACT+1
-SACT_CPANEL  = SYS_ACT+2
-SACT_KEYCAPS = SYS_ACT+3
-SACT_NOTEPAD = SYS_ACT+4
-SACT_PUZZLE  = SYS_ACT+5
 
 ; Edit commands passed to a window's M_EDIT method in key_char
 EDIT_UNDO   = 0
@@ -46,18 +40,10 @@ EDIT_PASTE  = 3
 EDIT_CLEAR  = 4
 EDIT_SELALL = 5
 
-APP_BASE = FINDER_BASE
-
 app_loaded: !byte 0
-pending_action: !byte ACT_NONE   ; run by the event loop (e.g. Quit from a close box)
-key_char:   !byte 0
-cur_action: !byte 0
 last_down:  !word 0
 last_mx:    !word 0
 last_my:    !byte 0
-dbl_click:  !byte 0
-dbl_time:   !byte 24      ; frames (Control Panel)
-win_part_hit: !byte 0
 
 ; guarded calls into the application
 hook_desk_draw:
@@ -110,6 +96,11 @@ install_app_menus:
         sta items_apple+1
         lda APP_ABOUT+1
         sta items_apple+2
+        lda #0                  ; nothing disabled or checked from the last app
+        ldx #NUM_MENUS*16-16-1
+-       sta menu_flags+16,x
+        dex
+        bpl -
         rts
 
 ; ---------------------------------------------------------------------
@@ -265,12 +256,9 @@ key_down:                       ; A = key, X = modifiers
         jmp hook_key
 
 ; ---------------------------------------------------------------------
-; Menu actions: System ones open desk accessories, the rest go to the
-; application
+; Menu actions go to the application.  Actions from SYS_ACT up are
+; kept for the System (none yet: desk accessories will be files).
 ; ---------------------------------------------------------------------
-sys_actions:
-        !word clock_open, calc_open, cp_open, kc_open, np_open, puz_open
-
 !zone do_action
 do_action:
         cmp #ACT_NONE
@@ -279,19 +267,10 @@ do_action:
         ldx #0
         stx zr_on
         cmp #SYS_ACT
-        bcs .sys
+        bcs .out
         ldx app_loaded
         beq .out
         jmp APP_ACTION
-.sys:   sec
-        sbc #SYS_ACT
-        asl
-        tay
-        lda sys_actions,y
-        sta jvec
-        lda sys_actions+1,y
-        sta jvec+1
-        jmp (jvec)
 .out:   rts
 
 too_many_windows:

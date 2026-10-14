@@ -6,7 +6,7 @@
 ; =====================================================================
 !cpu 6510
 !to "build/sheet.prg", cbm
-!source "build/syslink.asm"
+!source "build/sysapi.asm"
 !source "src/macros.asm"
 
 * = APP_BASE

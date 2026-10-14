@@ -2,7 +2,6 @@
 ; desktop.asm - desktop pattern, menu bar, screen corners
 ; =====================================================================
 
-desk_pat: !byte $aa,$55,$aa,$55,$aa,$55,$aa,$55
 
 ; fill the current clip rectangle with the desktop pattern
 !zone paint_desktop

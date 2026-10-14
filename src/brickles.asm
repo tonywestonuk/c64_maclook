@@ -185,7 +185,7 @@ bk_close:
 ; Drawing
 ; ---------------------------------------------------------------------
 ; local rect A,X - Y,t7 -> screen rx..ry (uses wc_*)
-bk_rect = cp_rect
+bk_rect = content_rect
 
 ; clip to the game window's content (also sets wc_*)
 bk_clip:
@@ -1365,7 +1365,7 @@ bk_about_draw:
         sta t7
         ldx #21
         lda t5
-        jsr cp_rect
+        jsr content_rect
         ldx u5
         lda bk_patlo,x
         pha
@@ -1415,22 +1415,10 @@ bk_update_menus:
         ora #MF_DISABLED
 ++      sta menu_flags+16+1
         ; Edit: for the Note Pad and Calculator
-        lda #0
+        lda #0                  ; Edit: nothing to edit in a game
         sta u1
         sta u2
-        jsr front_win
-        cpx #$ff
-        beq +
-        lda w_class,x
-        cmp #CL_NOTEPAD
-        bne ++
-        inc u1
-        inc u2
-        jmp +
-++      cmp #CL_CALC
-        bne +
-        inc u2
-+       ldx #32+0
+        ldx #32+0
         jsr menu_disable
         lda u1
         ldx #32+2

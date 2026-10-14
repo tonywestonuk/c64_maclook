@@ -1,0 +1,30 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+602 mouse 269 173
+614 down
+622 mouse 256 173
+625 mouse 244 173
+628 mouse 231 173
+631 mouse 219 173
+634 mouse 206 173
+637 mouse 194 173
+640 mouse 181 173
+643 mouse 169 173
+656 up
+766 shot build/hs_a.bmp
+767 mouse 159 173
+779 down
+809 up
+849 shot build/hs_b.bmp
+850 mouse 145 173
+862 down
+867 up
+907 shot build/hs_c.bmp
+908 mouse 39 173
+920 down
+980 up
+1020 shot build/hs_d.bmp
+1021 dump build/hs_d.bin

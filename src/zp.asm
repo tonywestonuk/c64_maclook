@@ -1,7 +1,13 @@
 ; =====================================================================
 ; Zero page.  The whole page is ours (KERNAL and BASIC are banked out);
 ; fp.asm swaps it with BASIC's copy around floating point ROM calls.
+;
+; Sections marked @public are part of the System's API: their names
+; and addresses are published in build/sysapi.asm.  @private ones are
+; the System's own and may change.
 ; =====================================================================
+
+; @public
 
 ; scratch - any routine may clobber these
 t0      = $02
@@ -12,12 +18,15 @@ t4      = $06
 t5      = $07
 t6      = $08
 t7      = $09
+
+; @private
 p0      = $0a           ; word pointers
 p1      = $0c
 p2      = $0e
 p3      = $10
 p4      = $12
 
+; @public
 ; rectangle parameters (inclusive), x is 16 bit, y is 8 bit
 rx1     = $14
 ry1     = $16
@@ -30,6 +39,7 @@ cly1    = $1c
 clx2    = $1d
 cly2    = $1f
 
+; @private
 pat     = $20           ; pointer to 8 pattern bytes
 rmode   = $22           ; M_COPY / M_OR / M_XOR / M_BIC
 
@@ -49,19 +59,26 @@ fbase   = $30
 fyoff   = $32
 fpm     = $33
 
+; @public
 ; text
 tx      = $34           ; 16 bit x
 ty      = $36           ; 16 bit signed y
 tstr    = $38           ; string pointer
 font    = $3a           ; 0 = system, 1 = small
 tmode   = $3b           ; blit mode for text
+
+; @private
 tpos    = $3c           ; 16 bit bit position in strip
 fwid    = $3e           ; font tables
 flo     = $40
 fhi     = $42
 fheight = $44
 tsi     = $45
+
+; @public
 twidth  = $46           ; 16 bit, width of the last measured/drawn string
+
+; @private
 
 ; strip blitter
 bcol    = $48
@@ -86,9 +103,12 @@ src_lo  = $5b
 src_hi  = $5c
 blit_fn = $5d           ; word
 
+; @public
 ; icons
 iptr    = $5f           ; word
 iflags  = $61
+
+; @private
 iw      = $62
 ih      = $63
 isz     = $64           ; word
@@ -99,6 +119,7 @@ img     = $69           ; word
 imask   = $6b           ; word
 ioutl   = $6d           ; word
 
+; @public
 ; input, written by the IRQ only
 mouse_x = $70           ; word, 0..319
 mouse_y = $72           ; 0..199
@@ -107,6 +128,7 @@ jiffy   = $74           ; word, frames since start
 cursor  = $76           ; current cursor shape
 modkeys = $77           ; MOD_SHIFT | MOD_CMD | MOD_CTRL
 
+; @private
 ; IRQ private
 irq_t0  = $78
 irq_t1  = $79
@@ -117,6 +139,7 @@ joy1    = $7d
 joy2    = $7e
 joy_spd = $7f
 
+; @public
 ; general purpose pointers for higher level code
 q0      = $80
 q1      = $82
