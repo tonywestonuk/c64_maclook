@@ -614,10 +614,24 @@ void WiC64::cmd_write(const uint8_t * p, size_t n)
 	reply(ST_OK);
 }
 
+// Is this the top of a volume?
+static bool is_root(const std::string & full)
+{
+	std::string rel = full;
+	if (rel.size() >= 2 && rel[0] >= '0' && rel[0] <= '9' && rel[1] == ':') {
+		rel = rel.substr(2);
+	}
+	return rel.find_first_not_of('/') == std::string::npos;
+}
+
 void WiC64::cmd_delete(const uint8_t * p, size_t n)
 {
 	std::string path;
 	if (!host_path(string_of(p, n), path)) {
+		return;
+	}
+	if (is_root(string_of(p, n))) {
+		fail(ST_DENIED, "A volume cannot be deleted");
 		return;
 	}
 	std::error_code ec;
@@ -647,6 +661,10 @@ void WiC64::cmd_rename(const uint8_t * p, size_t n, bool copy)
 	int vol_from = 0, vol_to = 0;
 	if (!host_path(string_of(p + 1, p[0]), from, &vol_from) ||
 	    !host_path(string_of(p + 1 + p[0], n - 1 - p[0]), to, &vol_to)) {
+		return;
+	}
+	if (is_root(string_of(p + 1, p[0])) || is_root(string_of(p + 1 + p[0], n - 1 - p[0]))) {
+		fail(ST_DENIED, "A volume cannot be moved");
 		return;
 	}
 	if (!copy && vol_from != vol_to) {

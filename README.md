@@ -15,7 +15,7 @@ from the flash, about 100 times faster than a 1541.
 Like the Mac's Toolbox, the System is used only through a published API: a
 jump table at a fixed address ([docs/api.md](docs/api.md)), so applications
 don't need rebuilding when the System changes. Its core takes 16K; the rest of
-it is loaded from the share into an 8K block when first needed. It has a
+it is loaded from the flash into an 8K block when first needed. It has a
 Commodore theme: a C= logo in place of the Apple, a happy C64 at start-up.
 
 ![Desktop](docs/screenshots/desktop.png)
@@ -90,9 +90,11 @@ shares are separated by `;`).
 
 ### On a real C64
 
-Put BOOT on a floppy (or a tape), `LOAD` it and `RUN` it. The WiC64 needs the
-file service (`docs/fileservice.md`); its ESP32 firmware, with SMB, is still
-to come, so for now this runs in the emulator.
+You need a WiC64 with the firmware in [firmware/](firmware/README.md)
+(built with PlatformIO): it writes `flash/` to the WiC64's flash as the
+startup disk, and serves the network shares set up on its web page. Then put
+BOOT on a floppy (`desktop64.d64`) or a tape, `LOAD` it and `RUN` it. The
+firmware has been tested against a simulated C64, not yet on a real WiC64.
 
 ## How it fits together
 
@@ -209,7 +211,8 @@ python3 tools/peek.py build/b5.bin app_loaded zcount     # inspect a RAM dump
 ```
 
 `tools/fixbranches.py` rewrites 6502 branches that ACME reports as out of
-range.
+range. The WiC64 firmware has its own test bench, on the host
+(`firmware/test/run.sh --smb`; see [firmware/README.md](firmware/README.md)).
 
 ## Known issues
 
@@ -217,7 +220,7 @@ range.
   applications before it can grow. Applications show a generic icon (their
   own icons, read from the application files, are to come).
 - Documents can't be saved yet.
-- The ESP32 firmware for a real WiC64 isn't written yet.
+- The WiC64 firmware hasn't been tried on a real WiC64 yet.
 - View by Name/Date/Size/Kind, Print and Erase Disk are not implemented.
 
 ## Credits
@@ -226,5 +229,7 @@ A fan-made tribute to the original Macintosh Finder by Bruce Horn and Steve
 Capps. Not affiliated with Apple or Commodore. Frodo 4 is by Christian Bauer
 and licensed under GPL-2.0; the C64 ROM images in `frodo4/src` are as
 published in upstream Frodo. Assembled with [ACME](https://sourceforge.net/projects/acme-crossass/).
+The WiC64 firmware uses [libsmb2](https://github.com/sahlberg/libsmb2) by
+Ronnie Sahlberg (LGPL-2.1), fetched when it is built.
 
 Built by Tony Weston with Claude Code.

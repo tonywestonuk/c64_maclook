@@ -9,7 +9,9 @@ port. The WiC64 (or Frodo's emulation of it) offers the C64 a few volumes:
   up on the WiC64. They are connected when the C64 asks.
 
 The commands below use the WiC64's normal transfer protocol, so they sit
-alongside its standard commands.
+alongside its standard commands. Two implementations: Frodo's emulated WiC64
+(`frodo4/src/WiC64.cpp`, on folders of the Mac) and the firmware for a real
+WiC64 (`firmware/`, on its flash and SMB shares).
 
 ## Transport
 

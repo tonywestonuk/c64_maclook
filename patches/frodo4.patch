@@ -735,10 +735,10 @@ index b90ad07..4d8a0eb 100644
  		last_sid_byte = read_osc3();	// Voice 3 oscillator read-back
 diff --git a/src/WiC64.cpp b/src/WiC64.cpp
 new file mode 100644
-index 0000000..6f83aee
+index 0000000..b598446
 --- /dev/null
 +++ b/src/WiC64.cpp
-@@ -0,0 +1,719 @@
+@@ -0,0 +1,737 @@
 +/*
 + *  WiC64.cpp - WiC64 network adapter on the user port
 + *
@@ -1355,10 +1355,24 @@ index 0000000..6f83aee
 +	reply(ST_OK);
 +}
 +
++// Is this the top of a volume?
++static bool is_root(const std::string & full)
++{
++	std::string rel = full;
++	if (rel.size() >= 2 && rel[0] >= '0' && rel[0] <= '9' && rel[1] == ':') {
++		rel = rel.substr(2);
++	}
++	return rel.find_first_not_of('/') == std::string::npos;
++}
++
 +void WiC64::cmd_delete(const uint8_t * p, size_t n)
 +{
 +	std::string path;
 +	if (!host_path(string_of(p, n), path)) {
++		return;
++	}
++	if (is_root(string_of(p, n))) {
++		fail(ST_DENIED, "A volume cannot be deleted");
 +		return;
 +	}
 +	std::error_code ec;
@@ -1388,6 +1402,10 @@ index 0000000..6f83aee
 +	int vol_from = 0, vol_to = 0;
 +	if (!host_path(string_of(p + 1, p[0]), from, &vol_from) ||
 +	    !host_path(string_of(p + 1 + p[0], n - 1 - p[0]), to, &vol_to)) {
++		return;
++	}
++	if (is_root(string_of(p + 1, p[0])) || is_root(string_of(p + 1 + p[0], n - 1 - p[0]))) {
++		fail(ST_DENIED, "A volume cannot be moved");
 +		return;
 +	}
 +	if (!copy && vol_from != vol_to) {
