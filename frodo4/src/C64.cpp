@@ -371,6 +371,7 @@ void C64::Reset(bool clear_memory)
 	TheCIA2->Reset();
 	TheIEC->Reset();
 	TheCart->Reset();
+	reset_mouse();
 	// Note: VIC has no reset input
 
 	if (clear_memory) {
@@ -926,16 +927,39 @@ void C64::poll_input()
 /*
  *  1351 mouse emulation (proportional mode), called once per frame.
  *
- *  The host pointer position is converted to C64 screen pixels, and the
- *  mouse counters are moved toward it. A 1351 reports its position modulo 64
- *  in bits 1..6 of POTX/POTY, so drivers can only see moves of up to +-31
- *  counts between two reads; larger moves are spread over several frames.
- *  As long as the C64 clamps its pointer to the same 320x200 area, its
- *  pointer stays exactly under the host pointer.
+ *  A 1351 reports its position modulo 64 in bits 1..6 of POTX/POTY, so a
+ *  driver can only make sense of moves of up to +-31 counts between two of
+ *  its reads.  The counters are therefore never moved more than 31 away
+ *  from the values the C64 last read: if it stops reading for a while
+ *  (interrupts off), the movement simply waits.
+ *
+ *  Without MouseSync this is all a real mouse would do: the counters chase
+ *  the host pointer, and the C64 pointer follows by dead reckoning.
+ *
+ *  With MouseSync, Frodo also reads the C64 driver's position block at
+ *  $FB-$FE (10-bit X and Y spanning the screen, tracking speed; see
+ *  docs/mouse.md) and sends exactly the movement that closes the gap to the
+ *  host pointer.  That feedback keeps the two pointers together, however
+ *  the counts were lost.
  */
 
 static const int MOUSE_X_OFFSET = 32;	// Display position of C64 screen pixel (0,0)
 static const int MOUSE_Y_OFFSET = 35;
+
+void C64::reset_mouse()
+{
+	mouse_cx = mouse_cy = 0;
+	mouse_rx = mouse_ry = 0;
+	mouse_hx = mouse_hy = -1;
+	mouse_chasing = true;
+	TheSID->SetPots(0, 0);
+}
+
+// a / b rounded to the nearest integer, for b > 0
+static int div_round(int a, int b)
+{
+	return a >= 0 ? (a + b / 2) / b : -((-a + b / 2) / b);
+}
 
 void C64::update_mouse()
 {
@@ -950,11 +974,57 @@ void C64::update_mouse()
 	int tx = std::clamp(x - MOUSE_X_OFFSET, 0, 319);
 	int ty = std::clamp(y - MOUSE_Y_OFFSET, 0, 199);
 
-	mouse_cx += std::clamp(tx - mouse_cx, -31, 31);
-	mouse_cy += std::clamp(ty - mouse_cy, -31, 31);
+	// Whatever the C64 read since the last frame is now its starting point
+	bool read_x, read_y;
+	TheSID->TakePotReads(read_x, read_y);
+	if (read_x) {
+		mouse_rx = mouse_cx;
+	}
+	if (read_y) {
+		mouse_ry = mouse_cy;
+	}
 
-	// POTY counts up when the mouse moves away from the user (screen up)
-	TheSID->SetPots((mouse_cx & 0x3f) << 1, (-mouse_cy & 0x3f) << 1);
+	if (ThePrefs.MouseSync) {
+
+		// Chase the host pointer only after it has moved, so a joystick
+		// in port 2 still works while the mouse is left alone
+		if (tx != mouse_hx || ty != mouse_hy) {
+			mouse_hx = tx;
+			mouse_hy = ty;
+			mouse_chasing = true;
+		}
+
+		// A new movement only once the last one has been read
+		if (mouse_chasing && (read_x || read_y)) {
+			static const int step_x[4] = { 2, 3, 5, 6 };	// units per count, by speed
+			static const int step_y[4] = { 3, 5, 8, 10 };
+
+			int cx = (RAM[0xfb] << 2) | (RAM[0xfd] & 3);	// where the C64 thinks it is
+			int cy = (RAM[0xfc] << 2) | ((RAM[0xfd] >> 2) & 3);
+			int speed = RAM[0xfe] & 3;
+
+			// Aim for the middle of the host pixel (3.2 x 5.12 units)
+			int ux = (tx * 32 + 16) / 10;
+			int uy = (ty * 128 + 64) / 25;
+
+			int dx = std::clamp(div_round(ux - cx, step_x[speed]), -31, 31);
+			int dy = std::clamp(div_round(uy - cy, step_y[speed]), -31, 31);
+
+			mouse_cx = mouse_rx + dx;
+			mouse_cy = mouse_ry - dy;		// POTY counts up when moving up
+			if (dx == 0 && dy == 0) {
+				mouse_chasing = false;
+			}
+		}
+
+	} else {
+
+		// Dead reckoning: at most 31 counts from what the C64 last read
+		mouse_cx = mouse_rx + std::clamp(tx - mouse_rx, -31, 31);
+		mouse_cy = mouse_ry + std::clamp(-ty - mouse_ry, -31, 31);
+	}
+
+	TheSID->SetPots((mouse_cx & 0x3f) << 1, (mouse_cy & 0x3f) << 1);
 }
 
 
@@ -969,6 +1039,7 @@ void C64::update_mouse()
  *    <frame> type <text>       type text, one key every 4 frames
  *    <frame> shot <file.bmp>   save a screenshot
  *    <frame> dump <file>       save 64K RAM + CPU registers
+ *    <frame> poke <addr> <val> write a byte to RAM (hex)
  *    <frame> quit
  */
 
@@ -1098,6 +1169,10 @@ void C64::run_test_script()
 				fwrite(regs, 1, 7, f);
 				fclose(f);
 			}
+		} else if (e.cmd == "poke") {		// poke <hex address> <hex value>
+			unsigned a = 0, v = 0;
+			sscanf(e.arg.c_str(), "%x %x", &a, &v);
+			RAM[a & 0xffff] = v;
 		} else if (e.cmd == "quit") {
 			quit_requested = true;
 		}

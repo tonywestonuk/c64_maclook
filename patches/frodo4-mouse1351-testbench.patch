@@ -1,5 +1,5 @@
 diff --git a/src/C64.cpp b/src/C64.cpp
-index 65440ee..04fb77b 100644
+index 65440ee..08edbf8 100644
 --- a/src/C64.cpp
 +++ b/src/C64.cpp
 @@ -39,6 +39,8 @@
@@ -11,7 +11,15 @@ index 65440ee..04fb77b 100644
  #include <utility>
  namespace chrono = std::chrono;
  
-@@ -693,6 +695,10 @@ void C64::vblank()
+@@ -369,6 +371,7 @@ void C64::Reset(bool clear_memory)
+ 	TheCIA2->Reset();
+ 	TheIEC->Reset();
+ 	TheCart->Reset();
++	reset_mouse();
+ 	// Note: VIC has no reset input
+ 
+ 	if (clear_memory) {
+@@ -693,6 +696,10 @@ void C64::vblank()
  	// Poll keyboard and joysticks
  	poll_input();
  
@@ -22,7 +30,7 @@ index 65440ee..04fb77b 100644
  	// Handle request for prefs editor
  	if (prefs_editor_requested) {
  		pause();
-@@ -901,6 +907,212 @@ void C64::poll_input()
+@@ -901,6 +908,286 @@ void C64::poll_input()
  	} else {
  		TheCIA1->Joystick2 &= joykey;
  	}
@@ -45,16 +53,39 @@ index 65440ee..04fb77b 100644
 +/*
 + *  1351 mouse emulation (proportional mode), called once per frame.
 + *
-+ *  The host pointer position is converted to C64 screen pixels, and the
-+ *  mouse counters are moved toward it. A 1351 reports its position modulo 64
-+ *  in bits 1..6 of POTX/POTY, so drivers can only see moves of up to +-31
-+ *  counts between two reads; larger moves are spread over several frames.
-+ *  As long as the C64 clamps its pointer to the same 320x200 area, its
-+ *  pointer stays exactly under the host pointer.
++ *  A 1351 reports its position modulo 64 in bits 1..6 of POTX/POTY, so a
++ *  driver can only make sense of moves of up to +-31 counts between two of
++ *  its reads.  The counters are therefore never moved more than 31 away
++ *  from the values the C64 last read: if it stops reading for a while
++ *  (interrupts off), the movement simply waits.
++ *
++ *  Without MouseSync this is all a real mouse would do: the counters chase
++ *  the host pointer, and the C64 pointer follows by dead reckoning.
++ *
++ *  With MouseSync, Frodo also reads the C64 driver's position block at
++ *  $FB-$FE (10-bit X and Y spanning the screen, tracking speed; see
++ *  docs/mouse.md) and sends exactly the movement that closes the gap to the
++ *  host pointer.  That feedback keeps the two pointers together, however
++ *  the counts were lost.
 + */
 +
 +static const int MOUSE_X_OFFSET = 32;	// Display position of C64 screen pixel (0,0)
 +static const int MOUSE_Y_OFFSET = 35;
++
++void C64::reset_mouse()
++{
++	mouse_cx = mouse_cy = 0;
++	mouse_rx = mouse_ry = 0;
++	mouse_hx = mouse_hy = -1;
++	mouse_chasing = true;
++	TheSID->SetPots(0, 0);
++}
++
++// a / b rounded to the nearest integer, for b > 0
++static int div_round(int a, int b)
++{
++	return a >= 0 ? (a + b / 2) / b : -((-a + b / 2) / b);
++}
 +
 +void C64::update_mouse()
 +{
@@ -69,11 +100,57 @@ index 65440ee..04fb77b 100644
 +	int tx = std::clamp(x - MOUSE_X_OFFSET, 0, 319);
 +	int ty = std::clamp(y - MOUSE_Y_OFFSET, 0, 199);
 +
-+	mouse_cx += std::clamp(tx - mouse_cx, -31, 31);
-+	mouse_cy += std::clamp(ty - mouse_cy, -31, 31);
++	// Whatever the C64 read since the last frame is now its starting point
++	bool read_x, read_y;
++	TheSID->TakePotReads(read_x, read_y);
++	if (read_x) {
++		mouse_rx = mouse_cx;
++	}
++	if (read_y) {
++		mouse_ry = mouse_cy;
++	}
 +
-+	// POTY counts up when the mouse moves away from the user (screen up)
-+	TheSID->SetPots((mouse_cx & 0x3f) << 1, (-mouse_cy & 0x3f) << 1);
++	if (ThePrefs.MouseSync) {
++
++		// Chase the host pointer only after it has moved, so a joystick
++		// in port 2 still works while the mouse is left alone
++		if (tx != mouse_hx || ty != mouse_hy) {
++			mouse_hx = tx;
++			mouse_hy = ty;
++			mouse_chasing = true;
++		}
++
++		// A new movement only once the last one has been read
++		if (mouse_chasing && (read_x || read_y)) {
++			static const int step_x[4] = { 2, 3, 5, 6 };	// units per count, by speed
++			static const int step_y[4] = { 3, 5, 8, 10 };
++
++			int cx = (RAM[0xfb] << 2) | (RAM[0xfd] & 3);	// where the C64 thinks it is
++			int cy = (RAM[0xfc] << 2) | ((RAM[0xfd] >> 2) & 3);
++			int speed = RAM[0xfe] & 3;
++
++			// Aim for the middle of the host pixel (3.2 x 5.12 units)
++			int ux = (tx * 32 + 16) / 10;
++			int uy = (ty * 128 + 64) / 25;
++
++			int dx = std::clamp(div_round(ux - cx, step_x[speed]), -31, 31);
++			int dy = std::clamp(div_round(uy - cy, step_y[speed]), -31, 31);
++
++			mouse_cx = mouse_rx + dx;
++			mouse_cy = mouse_ry - dy;		// POTY counts up when moving up
++			if (dx == 0 && dy == 0) {
++				mouse_chasing = false;
++			}
++		}
++
++	} else {
++
++		// Dead reckoning: at most 31 counts from what the C64 last read
++		mouse_cx = mouse_rx + std::clamp(tx - mouse_rx, -31, 31);
++		mouse_cy = mouse_ry + std::clamp(-ty - mouse_ry, -31, 31);
++	}
++
++	TheSID->SetPots((mouse_cx & 0x3f) << 1, (mouse_cy & 0x3f) << 1);
 +}
 +
 +
@@ -88,6 +165,7 @@ index 65440ee..04fb77b 100644
 + *    <frame> type <text>       type text, one key every 4 frames
 + *    <frame> shot <file.bmp>   save a screenshot
 + *    <frame> dump <file>       save 64K RAM + CPU registers
++ *    <frame> poke <addr> <val> write a byte to RAM (hex)
 + *    <frame> quit
 + */
 +
@@ -217,6 +295,10 @@ index 65440ee..04fb77b 100644
 +				fwrite(regs, 1, 7, f);
 +				fclose(f);
 +			}
++		} else if (e.cmd == "poke") {		// poke <hex address> <hex value>
++			unsigned a = 0, v = 0;
++			sscanf(e.arg.c_str(), "%x %x", &a, &v);
++			RAM[a & 0xffff] = v;
 +		} else if (e.cmd == "quit") {
 +			quit_requested = true;
 +		}
@@ -236,7 +318,7 @@ index 65440ee..04fb77b 100644
  
  
 diff --git a/src/C64.h b/src/C64.h
-index 194436b..683d8c4 100644
+index 194436b..fd4154d 100644
 --- a/src/C64.h
 +++ b/src/C64.h
 @@ -25,6 +25,7 @@
@@ -257,11 +339,15 @@ index 194436b..683d8c4 100644
  	void vblank();
  	void handle_rewind();
  	void reset_play_mode();
-@@ -210,6 +214,17 @@ private:
+@@ -210,6 +214,21 @@ private:
  	bool joy_trigl_on[2], joy_trigr_on[2];
  	uint8_t joykey;				// Joystick keyboard emulation mask value
  
-+	int mouse_cx = 0, mouse_cy = 0;	// 1351 counters as last presented to the C64 (= C64 pixels)
++	void reset_mouse();
++	int mouse_cx = 0, mouse_cy = 0;	// 1351 counters presented to the C64
++	int mouse_rx = 0, mouse_ry = 0;	// the counters as the C64 last read them
++	int mouse_hx = -1, mouse_hy = -1;	// host position last seen (MouseSync)
++	bool mouse_chasing = true;		// steering toward the host pointer (MouseSync)
 +
 +	struct TestEvent {
 +		unsigned frame;
@@ -368,23 +454,27 @@ index 3ca3f6f..dc7c70a 100644
  	uint32_t palette[256];				// Mapping of VIC color values to native ARGB
  
 diff --git a/src/Prefs.cpp b/src/Prefs.cpp
-index 77f9272..89953c5 100644
+index 77f9272..8061194 100644
 --- a/src/Prefs.cpp
 +++ b/src/Prefs.cpp
-@@ -68,6 +68,7 @@ Prefs::Prefs()
+@@ -68,6 +68,8 @@ Prefs::Prefs()
  	ShowLEDs = true;
  	AutoStart = false;
  	TestBench = false;
 +	Mouse1351 = false;
++	MouseSync = false;
  }
  
  
-@@ -243,6 +244,12 @@ void Prefs::ParseItem(std::string item)
+@@ -243,6 +245,15 @@ void Prefs::ParseItem(std::string item)
  	} else if (keyword == "LoadProgram") {
  		LoadProgram = value;
  
 +	} else if (keyword == "Mouse1351") {
 +		Mouse1351 = (value == "true");
++
++	} else if (keyword == "MouseSync") {
++		MouseSync = (value == "true");
 +
 +	} else if (keyword == "TestInput") {
 +		TestInputPath = value;
@@ -393,42 +483,46 @@ index 77f9272..89953c5 100644
  		TestScreenshotPath = value;
  
 diff --git a/src/Prefs.h b/src/Prefs.h
-index ad607f1..24cdfe7 100644
+index ad607f1..8873990 100644
 --- a/src/Prefs.h
 +++ b/src/Prefs.h
-@@ -128,6 +128,9 @@ public:
+@@ -128,6 +128,10 @@ public:
  
  	std::string CartridgePath;	// Path for cartridge image file
  
 +	bool Mouse1351;				// Emulate a 1351 mouse in port 1 that follows the host pointer (not saved to preferences file)
++	bool MouseSync;				// Steer the C64 driver's position block ($FB-$FE) onto the host pointer (not saved to preferences file)
 +	std::string TestInputPath;	// Scripted mouse/keyboard input for test-bench mode (not saved to preferences file)
 +
  	std::string TestScreenshotPath;	// Path for screenshot to be saved on exit in test-bench mode (not saved to preferences file)
  };
  
 diff --git a/src/SID.h b/src/SID.h
-index b90ad07..15d76d1 100644
+index b90ad07..4d8a0eb 100644
 --- a/src/SID.h
 +++ b/src/SID.h
-@@ -36,6 +36,7 @@ public:
+@@ -36,6 +36,8 @@ public:
  
  	void Reset();
  	uint8_t ReadRegister(uint16_t adr);
 +	void SetPots(uint8_t x, uint8_t y) { pot_x_val = x; pot_y_val = y; }
++	void TakePotReads(bool &x, bool &y) { x = pot_x_read; y = pot_y_read; pot_x_read = pot_y_read = false; }
  	void WriteRegister(uint16_t adr, uint8_t byte);
  	void NewPrefs(const Prefs * prefs);
  	void PauseSound();
-@@ -79,6 +80,9 @@ private:
+@@ -79,6 +81,11 @@ private:
  	uint16_t last_sid_cycles;	// Remaining cycles for SID data bus leakage sequence step
  	uint8_t last_sid_byte;		// Last value on SID data bus
  
 +	uint8_t pot_x_val = 0xff;	// A/D converter values (0xff = nothing connected)
 +	uint8_t pot_y_val = 0xff;
++	bool pot_x_read = false;	// read by the C64 since TakePotReads()
++	bool pot_y_read = false;
 +
  	static uint16_t sid_leakage_cycles[9];
  	static uint8_t sid_leakage_mask[9];
  
-@@ -228,8 +232,11 @@ inline uint8_t MOS6581::ReadRegister(uint16_t adr)
+@@ -228,8 +235,13 @@ inline uint8_t MOS6581::ReadRegister(uint16_t adr)
  {
  	bool start_leakage = false;
  
@@ -436,9 +530,11 @@ index b90ad07..15d76d1 100644
 -		last_sid_byte = 0xff;			// A/D converters are not implemented
 +	if (adr == 0x19) {
 +		last_sid_byte = pot_x_val;		// A/D converters (only driven by mouse emulation)
++		pot_x_read = true;
 +		start_leakage = true;
 +	} else if (adr == 0x1a) {
 +		last_sid_byte = pot_y_val;
++		pot_y_read = true;
  		start_leakage = true;
  	} else if (adr == 0x1b) {
  		last_sid_byte = read_osc3();	// Voice 3 oscillator read-back

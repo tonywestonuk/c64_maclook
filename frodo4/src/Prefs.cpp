@@ -69,6 +69,7 @@ Prefs::Prefs()
 	AutoStart = false;
 	TestBench = false;
 	Mouse1351 = false;
+	MouseSync = false;
 }
 
 
@@ -246,6 +247,9 @@ void Prefs::ParseItem(std::string item)
 
 	} else if (keyword == "Mouse1351") {
 		Mouse1351 = (value == "true");
+
+	} else if (keyword == "MouseSync") {
+		MouseSync = (value == "true");
 
 	} else if (keyword == "TestInput") {
 		TestInputPath = value;

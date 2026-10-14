@@ -37,6 +37,7 @@ public:
 	void Reset();
 	uint8_t ReadRegister(uint16_t adr);
 	void SetPots(uint8_t x, uint8_t y) { pot_x_val = x; pot_y_val = y; }
+	void TakePotReads(bool &x, bool &y) { x = pot_x_read; y = pot_y_read; pot_x_read = pot_y_read = false; }
 	void WriteRegister(uint16_t adr, uint8_t byte);
 	void NewPrefs(const Prefs * prefs);
 	void PauseSound();
@@ -82,6 +83,8 @@ private:
 
 	uint8_t pot_x_val = 0xff;	// A/D converter values (0xff = nothing connected)
 	uint8_t pot_y_val = 0xff;
+	bool pot_x_read = false;	// read by the C64 since TakePotReads()
+	bool pot_y_read = false;
 
 	static uint16_t sid_leakage_cycles[9];
 	static uint8_t sid_leakage_mask[9];
@@ -234,9 +237,11 @@ inline uint8_t MOS6581::ReadRegister(uint16_t adr)
 
 	if (adr == 0x19) {
 		last_sid_byte = pot_x_val;		// A/D converters (only driven by mouse emulation)
+		pot_x_read = true;
 		start_leakage = true;
 	} else if (adr == 0x1a) {
 		last_sid_byte = pot_y_val;
+		pot_y_read = true;
 		start_leakage = true;
 	} else if (adr == 0x1b) {
 		last_sid_byte = read_osc3();	// Voice 3 oscillator read-back

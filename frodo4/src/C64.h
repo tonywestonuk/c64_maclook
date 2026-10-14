@@ -214,7 +214,11 @@ private:
 	bool joy_trigl_on[2], joy_trigr_on[2];
 	uint8_t joykey;				// Joystick keyboard emulation mask value
 
-	int mouse_cx = 0, mouse_cy = 0;	// 1351 counters as last presented to the C64 (= C64 pixels)
+	void reset_mouse();
+	int mouse_cx = 0, mouse_cy = 0;	// 1351 counters presented to the C64
+	int mouse_rx = 0, mouse_ry = 0;	// the counters as the C64 last read them
+	int mouse_hx = -1, mouse_hy = -1;	// host position last seen (MouseSync)
+	bool mouse_chasing = true;		// steering toward the host pointer (MouseSync)
 
 	struct TestEvent {
 		unsigned frame;
