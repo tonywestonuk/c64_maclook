@@ -2,15 +2,18 @@
 """Rewrite out-of-range branches reported by ACME as inverted branch + jmp."""
 import re, subprocess, sys
 INV = {"bcc":"bcs","bcs":"bcc","beq":"bne","bne":"beq","bmi":"bpl","bpl":"bmi","bvc":"bvs","bvs":"bvc"}
+PROGRAMS = ["finder", "brickles", "sheet", "shapes"]   # applications, after the System
+def acme(name, src):
+    return subprocess.run(["acme", "-v1", "--msvc", "-r", f"build/{name}.lst", "-l", f"build/{name}.sym", src],
+                          capture_output=True, text=True)
 for it in range(30):
-    r = subprocess.run(["acme","-v1","--msvc","-r","build/system.lst","-l","build/system.sym","src/system.asm"],capture_output=True,text=True)
+    r = acme("system", "src/system.asm")
     if "Error" not in r.stdout+r.stderr:
-        subprocess.run(["python3","tools/linksym.py","build/system.sym","build/syslink.asm"])
-        r = subprocess.run(["acme","-v1","--msvc","-r","build/finder.lst","-l","build/finder.sym","src/finder_main.asm"],capture_output=True,text=True)
-        if "Error" not in r.stdout+r.stderr:
-            r = subprocess.run(["acme","-v1","--msvc","-r","build/brickles.lst","-l","build/brickles.sym","src/brickles_main.asm"],capture_output=True,text=True)
-            if "Error" not in r.stdout+r.stderr:
-                r = subprocess.run(["acme","-v1","--msvc","-r","build/sheet.lst","-l","build/sheet.sym","src/sheet_main.asm"],capture_output=True,text=True)
+        subprocess.run(["python3","tools/mkapi.py","build/system.sym","build/sysapi.asm","docs/api.md"])
+        for name in PROGRAMS:
+            r = acme(name, f"src/{name}_main.asm")
+            if "Error" in r.stdout+r.stderr:
+                break
     errs = re.findall(r'^(\S+)\((\d+)\) : Error \([^)]*\): Target out of range', r.stdout+r.stderr, re.M)
     if not errs:
         print((r.stdout+r.stderr).strip() or "clean"); break

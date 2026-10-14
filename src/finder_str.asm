@@ -84,6 +84,7 @@ str_o_trash:   !text "Trash", 0
 str_o_sysfold: !text "System Folder", 0
 str_o_brickles: !text "Brickles", 0
 str_o_sheet: !text "Spreadsheet", 0
+str_o_shapes: !text "Shapes", 0
 str_o_readme:  !text "Read Me", 0
 str_o_empty:   !text "Empty Folder", 0
 str_o_system:  !text "System", 0

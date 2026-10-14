@@ -117,4 +117,8 @@ pat_even:  !byte $ff,$00,$ff,$00,$ff,$00,$ff,$00
 pat_odd:   !byte $00,$ff,$00,$ff,$00,$ff,$00,$ff
 !source "build/patterns.asm"
 
+; --- the pen (move_to, line_to) ----------------------------------------
+pn_x:      !word 0
+pn_y:      !byte 0
+
 public_end:

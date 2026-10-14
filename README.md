@@ -19,14 +19,16 @@ space counted in blocks.
 |---|---|
 | ![Menus](docs/screenshots/menu.png) | ![Scroll bars](docs/screenshots/scrolling.png) |
 | ![Brickles](docs/screenshots/brickles.png) | ![Spreadsheet](docs/screenshots/spreadsheet.png) |
+| ![Shapes](docs/screenshots/shapes.png) | |
 
 ## What's in it
 
-- **SYSTEM** (the boot file, 18K): a QuickDraw-style graphics library
-  (patterns, clipping, proportional Chicago and Geneva style fonts, masked
-  icons), window manager, menu manager, alerts and dialogs, event handling
-  with a 1351 mouse or joystick, and a loader that brings applications in
-  from drive 8. It boots, then loads the Finder.
+- **SYSTEM** (the boot file, 21K): a QuickDraw-style graphics library
+  (rectangles, lines, ovals, circles and round rects in patterns and copy,
+  OR, XOR or erase modes, clipping, proportional Chicago and Geneva style
+  fonts, masked icons), window manager, menu manager, alerts and dialogs,
+  event handling with a 1351 mouse or joystick, and a loader that brings
+  applications in from drive 8. It boots, then loads the Finder.
 - **Desk accessories** (Calculator, Note Pad, Puzzle, Alarm Clock, Key Caps,
   Control Panel) are out of the System for now. Their source is in
   `src/da_*.asm`; they'll come back as separate files loaded from disk.
@@ -35,6 +37,8 @@ space counted in blocks.
   Clean Up, renaming icons by typing, zoom-rect animations, Restart and Shut
   Down.
 - **BRICKLES**: a Breakout game. The ball and paddle are hardware sprites.
+- **SHAPES**: a QuickDraw demonstration: lines, ovals, circles, round
+  rects and random shapes, in a choice of patterns or inverting.
 - **SHEET**: a small spreadsheet with formulas (`+ - * / ( )`, cell
   references, `SUM AVG MIN MAX COUNT` over ranges), automatic recalculation,
   number formats, and Cut/Copy/Paste through the shared Clipboard.
@@ -67,8 +71,8 @@ cycle-exact 1541 emulation: authentic, but booting takes about a minute.
 - Frodo maps keys by their position on a C64 keyboard, so some symbols are in
   unexpected places: `=` is PageDown, `*` is `]`, `:` is `;`, `+` is `-`,
   and `-` is `=`.
-- Double-click **Brickles** or **Spreadsheet** in the System Disk window to
-  launch them. Quit brings the Finder back.
+- Double-click **Brickles**, **Spreadsheet** or **Shapes** in the System Disk
+  window to launch them. Quit brings the Finder back.
 
 ## How it fits together
 
@@ -81,7 +85,8 @@ block 0-2  $0000-$5fff  zero page, stack, KERNAL variables, BASIC's zero page
 block 3    $6000-$7fff  the running application's core (FINDER, BRICKLES, SHEET)
 block 4    $8000-$9fff  the application's page block
 block 5    $a000-$bfff  QuickDraw's buffers: text/icon strips, shift tables
-block 6    $c000-$cfff  colour matrix, pointer sprites, menu save-under
+block 6    $c000-$cfff  colour matrix, pointer sprites, QuickDraw's oval
+                        table, menu save-under
            $d000-$dfff  I/O
 block 7    $e000-$ff3f  the hires bitmap
 ```
@@ -105,13 +110,14 @@ click, key, quit, plus pointers to its window classes, its menus and its
 | `src/system.asm` | SYSTEM: memory map and entry point |
 | `src/jumptab.asm`, `src/public.asm` | the API: jump table and public data |
 | `src/gfx.asm` | rectangles, patterns, clipping, text and icon blitting |
+| `src/qd_shapes.asm` | lines, ovals, circles, round rects |
 | `src/wm.asm`, `menu.asm`, `dialog.asm`, `events.asm` | windows, menus, dialogs, event loop |
 | `src/sys.asm` | IRQ, 1351 mouse, keyboard, pointer sprites, beep |
 | `src/loader.asm`, `boot.asm` | disk loading, start-up, app switching |
 | `src/fp.asm` | BASIC ROM floating point bridge |
 | `src/da_*.asm` | desk accessories (not built for now) |
 | `src/finder*.asm` | the Finder |
-| `src/brickles*.asm`, `src/sheet*.asm` | the applications |
+| `src/brickles*.asm`, `src/sheet*.asm`, `src/shapes_main.asm` | the applications |
 | `tools/fonts.py`, `tools/icons.py` | fonts, icons and cursors drawn as ASCII art |
 | `tools/mkapi.py` | publishes the API: `build/sysapi.asm`, `docs/api.md` |
 | `tools/d64.py` | disk image writer |

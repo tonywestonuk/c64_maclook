@@ -22,6 +22,7 @@ APP_CLIP    = 1
 APP_NONE    = 2
 APP_BRICKLES = 3
 APP_SHEET   = 4
+APP_SHAPES  = 5
 
 IC_DISK = 0
 IC_TRASH = 1
@@ -34,6 +35,7 @@ IC_CLIPBOARD = 7
 IC_SCRAPBOOK = 8
 IC_BRICKLES = 9
 IC_SHEET = 10
+IC_SHAPES = 11
 
 OBJ_DISK  = 0
 OBJ_TRASH = 1
@@ -50,7 +52,7 @@ app_classes:            ; draw, click, key, idle, close, edit, resize, scroll
 icon_table:
         !word icon_disk, icon_trash, icon_trashfull, icon_folder, icon_doc
         !word icon_system, icon_finder, icon_clipboard, icon_scrapbook
-        !word icon_brickles, icon_sheet
+        !word icon_brickles, icon_sheet, icon_paint
 
 ; ---------------------------------------------------------------------
 ; Object table
@@ -89,6 +91,7 @@ obj_init:
         +obj str_o_sheet,   OBJ_DISK, 130, 4, IC_SHEET, T_APP, APP_SHEET, 23, 6
         +obj str_o_readme,  OBJ_DISK, 186, 4, IC_DOC, T_DOC, APP_README, 6, 4
         +obj str_o_empty,   OBJ_DISK, 18, 40, IC_FOLDER, T_FOLDER, APP_NONE, 0, 4
+        +obj str_o_shapes,  OBJ_DISK, 74, 40, IC_SHAPES, T_APP, APP_SHAPES, 7, 6
         +obj str_o_system,  2, 18, 4, IC_SYSTEM, T_SYS, APP_NONE, 70, 0
         +obj str_o_finder,  2, 74, 4, IC_FINDER, T_SYS, APP_NONE, 48, 0
         +obj str_o_clipf,   2, 130, 4, IC_CLIPBOARD, T_DOC, APP_CLIP, 2, 5
@@ -2173,6 +2176,7 @@ open_obj:
 
 app_open:
         !word readme_open, clip_open, nop_method, brickles_launch, sheet_launch
+        !word shapes_launch
 
 
 ; Brickles and the Spreadsheet are real applications: the System
@@ -2186,6 +2190,11 @@ sheet_launch:
         lda #<str_sheet_file
         ldy #>str_sheet_file
         ldx #5
+        bne app_launch
+shapes_launch:
+        lda #<str_shapes_file
+        ldy #>str_shapes_file
+        ldx #6
 app_launch:
         sta u0
         sty u1
@@ -2200,6 +2209,7 @@ app_launch:
         jmp launch_app
 str_brickles_file: !text "BRICKLES"
 str_sheet_file:    !text "SHEET"
+str_shapes_file:   !text "SHAPES"
 
 ; ---------------------------------------------------------------------
 ; Renaming: typing while an icon is selected replaces its name

@@ -96,6 +96,18 @@ JT_SLOTS   = 128
         jmp fp_begin            ; before using the BASIC ROM's floating point
         jmp fp_end              ; after it
         jmp nop_method          ; does nothing (for unused window methods)
+; --- QuickDraw: lines, ovals and the pen
+        jmp set_mode            ; A = M_COPY, M_OR, M_XOR or M_BIC, after setting the pattern
+        jmp plot                ; one pixel at A/X = x, Y = y
+        jmp move_to             ; pen to A/X = x, Y = y
+        jmp line_to             ; line from the pen to A/X = x, Y = y; the pen moves there
+        jmp draw_line           ; line from rx1,ry1 to rx2,ry2
+        jmp frame_oval          ; outline of the oval inside rx1..ry2
+        jmp fill_oval           ; the oval inside rx1..ry2, filled
+        jmp frame_circle        ; outline of a circle: centre rx1,ry1, radius A (to 127)
+        jmp fill_circle         ; filled circle: centre rx1,ry1, radius A
+        jmp frame_rrect         ; outline of rx1..ry2 with corners of radius A
+        jmp fill_rrect          ; rx1..ry2 with corners of radius A, filled
 
 !if * > JUMP_TABLE + JT_SLOTS*3 { !error "jump table full" }
         !fill JUMP_TABLE + JT_SLOTS*3 - *, $60

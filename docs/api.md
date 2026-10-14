@@ -139,6 +139,22 @@ A, X, Y and the zero page registers below.
 | `$08e8` | `fp_end` | after it |
 | `$08eb` | `nop_method` | does nothing (for unused window methods) |
 
+### QuickDraw: lines, ovals and the pen
+
+| Address | Call | |
+|---|---|---|
+| `$08ee` | `set_mode` | A = M_COPY, M_OR, M_XOR or M_BIC, after setting the pattern |
+| `$08f1` | `plot` | one pixel at A/X = x, Y = y |
+| `$08f4` | `move_to` | pen to A/X = x, Y = y |
+| `$08f7` | `line_to` | line from the pen to A/X = x, Y = y; the pen moves there |
+| `$08fa` | `draw_line` | line from rx1,ry1 to rx2,ry2 |
+| `$08fd` | `frame_oval` | outline of the oval inside rx1..ry2 |
+| `$0900` | `fill_oval` | the oval inside rx1..ry2, filled |
+| `$0903` | `frame_circle` | outline of a circle: centre rx1,ry1, radius A (to 127) |
+| `$0906` | `fill_circle` | filled circle: centre rx1,ry1, radius A |
+| `$0909` | `frame_rrect` | outline of rx1..ry2 with corners of radius A |
+| `$090c` | `fill_rrect` | rx1..ry2 with corners of radius A, filled |
+
 ## Public data
 
 Fixed addresses after the jump table. Applications read these and set the
@@ -282,7 +298,14 @@ ones that are parameters (`dlg_*`, `zr_*`, settings).
 | `$0b33` | `pat_even` |  |
 | `$0b3b` | `pat_odd` |  |
 | `$0b43` | `patterns` |  |
-| `$0ba3` | `public_end` |  |
+
+### The pen (move_to, line_to)
+
+| Address | Name | |
+|---|---|---|
+| `$0ba3` | `pn_x` |  |
+| `$0ba5` | `pn_y` |  |
+| `$0ba6` | `public_end` |  |
 
 ## Zero page registers
 

@@ -17,7 +17,7 @@
 ;   4    $8000-$9fff  the application's page block
 ;   5    $a000-$bfff  QuickDraw buffers: strips ($a000), shift tables ($b000)
 ;   6    $c000-$cfff  colour matrix, sprite pointers, cursor sprites ($c400),
-;                     menu save-under ($c800)
+;                     QuickDraw's oval table ($c700), menu save-under ($c800)
 ;        $d000-$dfff  I/O
 ;   7    $e000-$ff3f  hires bitmap
 ; =====================================================================
@@ -65,6 +65,7 @@ start:  sei
 
 !source "src/sys.asm"
 !source "src/gfx.asm"
+!source "src/qd_shapes.asm"
 !source "src/util.asm"
 !source "src/desktop.asm"
 !source "src/menu.asm"

@@ -1,0 +1,34 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+602 mouse 111 106
+614 down
+618 up
+630 down
+634 up
+1094 mouse 161 5
+1106 down
+1126 mouse 161 28
+1146 up
+1336 mouse 120 5
+1348 down
+1368 mouse 120 50
+1388 up
+1578 shot build/qp_1.bmp
+1579 mouse 161 5
+1591 down
+1611 mouse 161 65
+1631 up
+1821 mouse 120 5
+1833 down
+1853 mouse 120 72
+1873 up
+2113 shot build/qp_2.bmp
+2134 mouse 161 5
+2146 down
+2164 mouse 161 40
+2184 shot build/qp_3.bmp
+2186 mouse 230 120
+2198 up

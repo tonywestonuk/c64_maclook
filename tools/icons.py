@@ -685,7 +685,7 @@ def hexrow(data):
 
 # Desk accessory icons: not on the disk until desk accessories come back
 # as files.
-UNUSED_ICONS = {'calc', 'notepad', 'puzzle', 'clock', 'cpanel', 'paint', 'readme'}
+UNUSED_ICONS = {'calc', 'notepad', 'puzzle', 'clock', 'cpanel', 'readme'}
 
 SYSTEM_ICONS = {'caution', 'stop', 'note', 'arrowup', 'arrowdn', 'arrowlt', 'arrowrt', 'grow', 'radio', 'radioon',
                 'c64logo', 'happymac'}
