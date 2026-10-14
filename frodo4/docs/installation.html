@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<HTML>
+<HEAD>
+<META charset="utf-8">
+<TITLE>Installation</TITLE>
+</HEAD>
+<BODY>
+
+<H1>Installation</H1>
+
+<HR>
+
+<P>There are two kinds of Frodo distributions. Source distributions contain
+source code that has to be compiled on your system. Binary distributions (or
+packages) contain an executable that can be started directly.
+
+
+<H2>Compiling on Unix-like systems</H2>
+
+<P>Prerequisites:
+
+<UL>
+<LI>A C++20 compiler
+<LI><A HREF="https://libsdl.org/">SDL 2.x</A>
+<LI>GTK 3
+</UL>
+
+<P>You can compile and install Frodo in the usual way:
+
+<P><KBD>$ ./autogen.sh<BR>
+$ make<BR>
+$ sudo make install</KBD>
+
+
+<H2>Compiling on macOS</H2>
+
+<P>The easiest way to build Frodo on macOS is to use
+<A HREF="https://brew.sh/">Homebrew</A> to get access to the necessary
+software packages.
+
+<P>Install the prerequisites using brew:
+
+<P><KBD>% brew install autoconf automake pkg-config sdl2 gtk+3</KBD>
+
+<P>Now you can compile and install Frodo:
+
+<P><KBD>% ./autogen.sh<BR>
+% make<BR>
+% make install</KBD>
+
+
+<H2>Compiling on Windows 10 and above</H2>
+
+<P>Building Frodo for Windows requires the
+<A HREF="https://www.msys2.org/">MSYS2 environment</A> to get access to the
+necessary software packages.
+
+<P>After installation of MSYS2, start the MSYS2 environment and install the
+compiler and prerequisites using pacman:
+
+<P><KBD>$ pacman -S mingw-w64-ucrt-x86_64-gcc<BR>
+$ pacman -S mingw-w64-ucrt-x86_64-autotools<BR>
+$ pacman -S mingw-w64-ucrt-x86_64-SDL2<BR>
+$ pacman -S mingw-w64-ucrt-x86_64-gtk3</KBD>
+
+<P>Now you can compile and install Frodo:
+
+<P><KBD>$ ./autogen.sh<BR>
+$ make<BR>
+$ make install</KBD>
+
+</BODY>
+</HTML>

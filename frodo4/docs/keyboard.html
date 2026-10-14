@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<HTML>
+<HEAD>
+<META charset="utf-8">
+<TITLE>Keyboard Layout</TITLE>
+</HEAD>
+<BODY>
+
+<H1>Keyboard Layout</H1>
+
+<HR>
+
+<P>The keyboard layout in Frodo closely resembles that of a real C64. The
+individual rows of the keyboard are mapped as follows:
+
+<PRE>
+← 1 2 3 4 5 6 7 8 9 0 + -
+   Q W E R T Y U I O P @ * ↑
+    A S D F G H J K L : ;
+     Z X C V B N M , . /
+</PRE>
+
+<P>In addition, Frodo uses the following keys to represent special keys on
+the C64 keyboard, or to control functions of the emulator:
+
+<PRE>
+ Esc          - RUN/STOP
+ Tab          - CTRL
+ Backspace    - INS/DEL
+ Delete       - INS/DEL
+ Insert       - SHIFT + INS/DEL
+ Return/Enter - RETURN
+ Shift keys   - SHIFT
+ Alt Keys     - C=
+ Ctrl Keys    - CTRL
+ Caps lock    - SHIFT LOCK
+ Arrow keys   - CRSR ↑/↓ and CRSR ←/→
+ F1-F8        - F1-F8
+ F10          - Open <A HREF="settings.html">settings window</A>
+ F11          - RESTORE
+ F12          - Reset C64 and 1541
+ Shift + F12  - Reset C64 and 1541 and clear memory
+ Ctrl + F12   - Reset C64 and 1541 and auto-start from drive 1 or 8
+ Home         - CLR/HOME
+ End          - &pound;
+ Page Up      - ↑
+ Page Down    - =
+ Keypad Enter - Toggle fullscreen mode
+ Keypad Plus  - Fast-forward
+ Keypad Minus - Rewind
+</PRE>
+
+<P>This means that the famous key combination RUN/STOP-RESTORE must be typed
+as Esc-F11. But you don't have to beat the F11 key as violently as the
+RESTORE key on the original C64. <SAMP>:-)</SAMP>
+
+<P>The arrow (cursor) keys work as expected. That is, the '↑' key
+corresponds to “SHIFT + CRSR ↑/↓” on the C64. The same applies to the
+function keys F2, F4, F6 and F8.
+
+<P>The numerical keypad emulates a joystick in port 1 or 2, depending on the
+state of the Num Lock (Num Lock off: port 2, Num Lock on: port 1):
+
+<PRE>
+   7    8    9
+    ↖   ↑   ↗
+
+   4    5    6
+    ←  Fire →
+
+    ↙   ↓   ↘
+   1    2    3
+
+   0
+  Fire
+</PRE>
+
+</BODY>
+</HTML>

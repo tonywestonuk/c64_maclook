@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<HTML>
+<HEAD>
+<META charset="utf-8">
+<TITLE>Settings</TITLE>
+</HEAD>
+<BODY>
+
+<H1>Settings</H1>
+
+<HR>
+
+<P>After starting Frodo a settings window will appear, unless you have
+started it by double-clicking on a disk, tape, or cartridge image file, or
+by specifying an image file on the <A HREF="commandline.html">command line</A>.
+
+<P>You can also bring up the settings window at any time by pressing
+<B>F10</B> while the emulation is running.
+
+
+<H2>Drives</H2>
+
+<P>The box <B>“Disk Drive Paths”</B> has four fields, each corresponding to
+one of four emulated Commodore 1541 floppy disk drives with the drive
+numbers 8, 9, 10 and 11 (normally you only need drive 8). For each drive,
+there is a <EM>file selection button</EM>, an <EM>“Eject” button</EM> and a
+<EM>“Next Disk” button</EM>.
+
+<P>Frodo offers three different modes for disk drive emulation (see <A
+HREF="files.html">here</A> for details):
+
+<UL>
+<LI><EM>Disk Image Mode</EM> uses a binary dump of a 1541 floppy disk in the
+.d64 or .x64 disk image format for providing true, sector-by-sector floppy
+emulation. This is the preferred mode with the highest compatibility.
+<LI><EM>Tape/Archive Mode</EM> makes the contents of a .t64 tape image file,
+a LYNX archive file, or a single .p00 program file available to the emulated
+C64 as a “pseudo disk”, which is accessed as if it was a floppy disk. For
+actual tape drive emulation, see the <EM>“Tape Drive Path”</EM> settings,
+below.
+<LI><EM>Directory Mode</EM> makes the contents of a directory of the host
+file system available to the emulated C64 as a “pseudo disk”.
+</UL>
+
+<P>The <B>file selection button</B> opens a dialog where you can choose a
+.d64/.x64/.t64/LYNX file to mount in the corresponding drive on the emulator.
+To select a directory for Directory Mode, choose any file within the
+directory that is not of one of those image file types.
+
+<P>Clicking on the <B>“Eject” button</B> unmounts the selected file or
+directory from the respective drive. When full 1541 emulation is enabled,
+the drive will behave like it has no disk in it, otherwise the drive will be
+disconnected entirely.
+
+<P>The <B>“Next Disk” button</B> only works in Disk Image Mode and changes
+the mounted .d64/.x64/.g64 disk image file to the next one in a series.
+Frodo tries to be a bit clever about figuring out what that “next disk”
+actually is. If the image files have names ending with patterns like “Disk
+1”/“Disk 2”, “Side A”/“Side B”, “(1)”/“(2)”, etc. it is usually successful.
+
+<P>If <B>“Enable Full 1541 Emulation”</B> is turned on, the four emulated
+1541s are disabled and replaced by a single 1541 emulation (drive 8) that
+only operates on .d64/.x64/.g64 files, but emulates the entire 1541 hardware
+and is compatible with most fast loaders and some forms of copy protection,
+at the expense of considerably slower disk access. If you have a .d64 with a
+program that doesn't load with the normal emulation (see above), you may
+have better luck with the full 1541 processor emulation instead.
+
+<P>With <B>“Map / ↔ \ in file names”</B> you control whether a '/' in
+C64 filenames will be translated to '\' and vice versa for Directory Mode
+drives. On many systems, the '/' character is used to access subdirectories,
+but since the C64/1541 doesn't support subdirectories, that character is a
+valid part of a C64 file name. This is a problem if a program wants to
+create a file with a '/' in it, because the host system would interpret the
+part before the '/' as a directory name and, finding no such directory,
+would return an error and the operation would fail. If you activate this
+checkbox all '/'s will transparently be translated into '\', so in directory
+listings the '/' will still appear. If you turn off this option, you can
+actually use the '/' to access files in subdirectories from the C64.
+
+<P>In the box <B>“Tape Drive Path”</B> (not available in Frodo Lite) you can
+choose a .tap tape image file to mount in the emulated “Datasette” tape
+drive with drive number 1 The <EM>file selection button</EM> and <EM>“Eject”
+button</EM> work in the same way as for the disk drives. Note that you
+cannot use .t64 files for the tape drive even though they are often labeled
+as “tape images”.
+
+<P>When the emulation is running, the box also contains buttons which
+correspond to the <B>“Play”</B>, <B>“Record”</B> and <B>“Stop”</B> buttons
+of the tape drive, and additional <B>“Rewind”</B> and <B>“Forward”</B>
+buttons which move the simulated tape to its start or end position,
+respectively. When the C64 asks you to “Press Record &amp; Play” it is
+sufficient to just click on the “Record” button. The “Auto-Start Drive 1”
+function automatically rewinds the tape and presses the “Play” button for
+you, so you will rarely have to touch these controls.
+
+<P>There are some rare instances of software distributed on tape which
+refuses to run if it sees a disk drive connected. In this case, turn off the
+full 1541 emulation, and click “Eject” on all four disk drives.
+
+
+<H2>Video/Sound</H2>
+
+<P>With <B>“Display Type”</B> you can choose whether the emulation shall run
+in a window or in full-screen mode. You can also switch between modes while
+Frodo is running by pressing the Enter key on the numeric keypad.
+
+<P><B>“Initial Window Size”</B> allows you to select the factor by which the
+emulation window is initially scaled up compared to the original C64 display
+resolution. The window can also be resized later while Frodo is running.
+
+<P>The <B>“Color Palette”</B> setting switches between two color schemes for
+the C64 display: The <EM>“Pepto”</EM> palette produces vibrant colors, while
+the <EM>“Colodore”</EM> palette is more desaturated but more closely
+matches what the original video display on a C64 looked like.
+
+<P><B>“Detect Sprite Collisions”</B> determines whether collisions between
+sprites among themselves, and between sprites and background graphics should
+be detected by the C64. Turning off collisions may make you invincible in
+some older games (sadly, your enemies are likely to become invincible, too
+<SAMP>:-/</SAMP>).
+
+<P>Frodo normally uses the lower border of the C64 display to overlay some
+information about the emulation speed (unless it is running at 100%) and a
+representation of the activity/error LEDs of the emulated disk drives. By
+deselecting <B>“Show Speed and Drive LED Status”</B> you can turn off this
+display if you find that it distracts from the pure C64 experience.
+
+<P>The <B>“Sound Emulation”</B> selection controls the type of sound output.
+<EM>“None”</EM> means no sound, <EM>“Software”</EM> turns on the software
+sound emulation. Under Linux, there is another option, <EM>“Catweasel”</EM>
+for using a hardware SID chip on a Catweasel MK3 board (you also need
+Catweasel kernel drivers for this).
+
+<P>The <EM>“Software”</EM> setting also gives you two choices for the kind
+of C64 sound chip to emulate: The 6581 (recommended) is the original SID
+chip, while the 8580 is a newer revision with some audible differences. In
+Frodo, the setting affects the audio filters and the sound of combined
+waveforms. Some newer C64 software (1990s onwards) may only sound properly
+with the <EM>“8580”</EM> setting, some software also gives you a choice
+which SID chip to use. If in doubt, choose <EM>“6581”</EM>.
+
+
+<H2>Input</H2>
+
+<P><B>“Joystick Port 1/2”</B> allows you to select which connected game
+controller you want to use for each of the two C64 joystick ports. Note that
+most C64 games use a joystick in Port 2. If you don't want to use game
+controllers, Frodo also offers a <A HREF="keyboard.html">joystick
+emulation</A> on the numeric keypad.
+
+<P>Because C64 joysticks typically only have one fire button many games use
+the keyboard to control additional functions. With the “Button Mapping”
+feature you can map game controller buttons to C64 keys so you can play a
+game using only the controller, without having to reach for the keyboard.
+The <B>“Edit...”</B> button lets you define named button mappings which you
+can then select with the <B>“Button Mapping” chooser</B>. For example, the
+game “Turrican” normally uses the F7 key for throwing grenades and the SPACE
+bar to activate the energy lines and the gyroscope. You can create a new
+button mapping named “Turrican” to assign these two keys to buttons on your
+controller which you find convenient.
+
+<P>The selected button mapping always applies to both controller ports. Note
+that the “A” (or Cross) button is always mapped to the joystick fire button,
+and the left and right trigger buttons control the rewind and
+fast-forwarding features of Frodo. These mappings cannot be changed. The
+“PLAY” key which you can map refers to the Play button on the “Datasette”
+tape drive. This mapping is intended for the game “Aquarius” which uses the
+Datasette as its controller.
+
+<P>With <B>“Swap Joysticks”</B> you can swap the assignments of the two
+joystick ports without having to re-select the attached game controllers.
+If, for example, you only have one controller mapped to Port 2 but the
+game expects a joystick in port 1, then you can simply activate “Swap
+joysticks” and continue to use your already assigned controller.
+
+<P>If the <B>“Twin-Stick Mode”</B> option is enabled, the right stick on
+each game controller controls the direction of the joystick on the opposite
+port. This is used to play games like “Robotron 2084”, which normally use
+one joystick for movement and a second for firing, with only a single game
+controller. Use the “Swap Joysticks” option if the stick assignment is
+wrong. Not recommended for two-player games.
+
+<P>The <B>“Enable Tape Motor Rumble”</B> option allows the C64 to control
+rumble effects on the attached game controllers via the tape drive motor
+signal. The game “Aquarius” uses this for providing haptic feedback. You
+should normally leave this option off.
+
+
+<H2>Options</H2>
+
+<P>When the field <B>“Limit Speed to 100%”</B> is active, Frodo caps the
+speed of the emulation at 100% of that of an original C64. This is usually
+what you want when playing games.
+
+<P>With the setting <B>“Fast Reset”</B> you can bypass the memory test which
+the C64 normally performs on a reset, and which takes about three seconds to
+complete. Under emulation, this test is not necessary and resetting the C64
+(F12 key) gets much faster when it is bypassed.
+
+<P>The “Expansion Slot” group allows you to attach various devices to the
+expansion slot of the emulated C64. Under <B>“Memory Expansion”</B> you can
+set the type and size of a RAM expansion module emulated by Frodo, or turn
+the emulation off (<EM>“None”</EM>). Very few C64 software actually uses a
+RAM expansion (operating systems like ACE and GEOS, some disk copy
+utilities, and the port of the “Sonic the Hedgehog” game, for example), so
+you can usually leave this at the <EM>“None”</EM> setting.
+
+<P>If the “Memory Expansion” is set to <EM>“None”</EM>, you can use the
+<B>“Cartridge” file selection button</B> to choose a .crt cartridge image
+file to attach to the C64. At the moment, Frodo only supports regular ROM
+cartridges (that means no Ultimax, no Action Replay, no EasyFlash, nor any
+other funny things). When attaching a new cartridge, Frodo will reset the
+C64 to allow the cartridge software to start properly. Click on the
+<B>“Eject” button</B> to remove the cartridge from the emulated C64 and
+return it to normal operation, ready to load disk-based games again.
+
+<P>Frodo comes with built-in standard C64 and 1541 drive firmware. If you
+want to use alternative firmware you can supply your own ROM files and use
+the functions of the “Firmware ROMs” group to define sets of firmware ROMs
+using the <B>“Edit...”</B> button, and then switch between them with the
+<B>“Firmware Set” chooser</B>. If, for example, you have JiffyDOS ROMs you
+can create a new firmware set called “JiffyDOS” and choose your JiffyDOS
+Kernal and Drive ROM files for this set, leaving the Basic and Char ROMs at
+the built-in defaults. When switching between firmware sets, Frodo will
+reset the C64 to allow the new firmware to start properly.
+
+
+<H2>Advanced</H2>
+
+<P>The settings in this group are only available in Frodo Lite.
+
+<P><B>“Cycles per line (CPU)”</B> and <B>“Cycles per Bad Line (CPU)”</B> set
+the number of clock cycles available to the C64 CPU per normal raster line
+and per Bad Line. If a program shows flickering lines or graphical flaws you
+can try to slightly alter both values.
+
+<P>With <B>“Cycles per line (CIA)”</B> you can control the speed of the CIA
+timers. Entering a higher value increases the frequency of cursor blinking
+and key repeat. Some programs don't run correcly with the default value.
+
+<P><B>“Cycles per line (1541)”</B> sets the number of cycles available to
+the 1541 processor emulation per raster line. There is normally no need to
+change this value. This setting has no effect if 1541 processor emulation is
+turned off.
+
+<P>The settings for the four “cycles” coming closest to an original PAL C64
+are (63, 23, 63, 64).
+
+<P>The setting <B>“Clear CIA ICR on write”</B> is necessary to make some
+programs (such as the games “Gyruss” and “Motos”) run that would otherwise
+hang in an endless interrupt loop because they use an unusual technique to
+acknowledge CIA interrupts (sometimes by accident, it appears...). It should
+normally be turned off.
+
+
+<H2>Menus and Other Buttons</H2>
+
+<P>Clicking <B>“Start”/“Continue”</B> or selecting the respective command
+from the “File” menu will close the settings window and start the actual
+emulation or return to it. Likewise, <B>"Quit"</b> will discard your changes
+to the settings and quit Frodo.
+
+<P><B>“Auto-Start Drive 8 / 1”</B> starts the emulation and auto-runs the
+software from the image file mounted in disk drive 8 or tape drive 1 using
+standard load commands (to start from tape you have to eject the disk in
+drive 8). It behaves the same way as pressing Ctrl-F12 while the emulator is
+running.
+
+<P>With <B>“Create Disk Image File...”</B> in the “File” menu you can create
+an empty .d64 image file if you need one, for example to save your progress
+in a game. Likewise, the <B>“Create Tape Image File...”</B> command creates
+a blank .tap image file for the tape drive. You can mount the created image
+files in the “Disk Drive Paths” and “Tape Drive Path” settings,
+respectively.
+
+<P>Once the emulation has been started you can use the <B>“Save
+snapshot...”</B> command in the “File” menu to save the current state of the
+emulated C64 to a file which you can then restore later using the <B>“Load
+Snapshot...”</B> command.
+
+<P><EM>Warning: The format of snapshot files is expected to change in future
+versions of Frodo, so don't get too attached to your saved snapshots.</EM>
+
+<P>The <B>“SAM Monitor...”</B> command in the “Tools” menu starts the <A
+HREF="sam.html">SAM</A> machine language monitor which allows you to inspect
+the state of the running C64 program.
+
+</BODY>
+</HTML>
