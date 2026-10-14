@@ -1,0 +1,3 @@
+20 mouse 200 100
+450 mouse 150 60
+520 dump build/mb1.bin

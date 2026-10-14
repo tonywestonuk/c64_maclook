@@ -55,7 +55,8 @@ cycle-exact 1541 emulation: authentic, but booting takes about a minute.
 ### Using it
 
 - The C64 pointer follows your Mac's pointer; there's no need to capture the
-  mouse. A joystick in port 2 also works.
+  mouse. A joystick in port 2 also works. Programs can read the mouse from a
+  small block in zero page ([docs/mouse.md](docs/mouse.md)).
 - **Command key = C=**, which is Alt/Option on your keyboard (e.g. C= Q quits
   an application).
 - Frodo maps keys by their position on a C64 keyboard, so some symbols are in
@@ -103,9 +104,13 @@ are linked against SYSTEM's symbol table when they're built.
 (upstream commit `59f096d`) with two additions. They're shown as one commit
 in this repo's history, and also as `patches/frodo4-mouse1351-testbench.patch`.
 
-- **1351 mouse emulation** (`Mouse1351=true`): the host pointer position is
-  turned into 1351 counters on the SID's paddle registers, so the C64
-  pointer tracks the host pointer exactly. Stock Frodo has no mouse support.
+- **1351 mouse emulation** (`Mouse1351=true`): the host pointer drives an
+  emulated Commodore 1351 on the SID's paddle registers. Stock Frodo has no
+  mouse support.
+- **Mouse feedback** (`MouseSync=true`): Frodo reads the C64 driver's
+  position block at `$FB`–`$FE` and sends exactly the movement that puts the
+  C64 pointer on the same pixel as the host pointer, so it can't drift.
+  The block and the driver are described in [docs/mouse.md](docs/mouse.md).
 - **Test-bench scripting** (`TestInput=script.txt` with `TestBench=true`): a
   frame-by-frame script of `mouse x y`, `down`/`up`, `keydown`/`keyup`
   (SDL key names or raw scancode numbers), `type text`, `shot file.bmp`,

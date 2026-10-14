@@ -7,7 +7,7 @@ DIR=$(cd "$(dirname "$0")/.." && pwd)
 CFG=$(mktemp -t frodocfg)
 cd "$DIR"
 "$DIR/frodo4/src/Frodo" -c "$CFG" TestBench=true TestMaxFrames=$N TestInput="$SCRIPT" \
-   LimitSpeed=false SIDType=NONE FastReset=true Mouse1351=true \
+   LimitSpeed=false SIDType=NONE FastReset=true Mouse1351=true MouseSync=true \
    "$DIR/desktop64.d64" Emul1541Proc=false >/dev/null 2>&1
 rm -f "$CFG"
 for f in ${OUT}*.bmp; do

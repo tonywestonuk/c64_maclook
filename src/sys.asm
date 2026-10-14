@@ -109,7 +109,17 @@ hw_init:
         sta $d015
         lda #CUR_ARROW
         jsr set_cursor
-        ; input state
+        ; input state: the mouse starts at the top left
+        lda #0
+        ldx #4
+-       sta ms_x,x
+        dex
+        bpl -
+        sta MB_XH
+        sta MB_YH
+        sta MB_LO
+        lda #1                  ; tracking speed: about 1 pixel per count
+        sta MB_SPEED
         lda $d419
         sta old_potx
         lda $d41a
@@ -175,60 +185,100 @@ irq_body:
         jmp beep_tick
 
 ; ---------------------------------------------------------------------
-; 1351 mouse in port 1 (proportional mode) plus joystick in port 2
+; Mouse: a Commodore 1351 in port 1 (proportional mode), or a joystick
+; in port 2.  The position is 10 bits per axis across the whole screen,
+; published in the zero page block $fb-$fe.  See docs/mouse.md.
 ; ---------------------------------------------------------------------
+MB_XH    = $fb          ; X bits 9-2
+MB_YH    = $fc          ; Y bits 9-2
+MB_LO    = $fd          ; changed, right, left, -, Y bits 1-0, X bits 1-0
+MB_SPEED = $fe          ; tracking speed 0-3
+
+ms_x:    !word 0        ; the driver's own copy, 0..1023
+ms_y:    !word 0
+ms_btn:  !byte 0        ; bit 0 left, bit 1 right
+ms_px:   !word $ffff    ; as last published, to spot changes
+ms_py:   !word $ffff    ; (same layout as ms_x..ms_btn)
+ms_pb:   !byte $ff
+ms_sx:   !byte 3        ; step sizes for the current speed
+ms_sy:   !byte 5
+ms_v:    !byte 0        ; scratch (interrupt only)
+ms_m:    !byte 0
+ms_s:    !byte 0
+ms_jx:   !byte 0
+ms_jy:   !byte 0
+ms_t:    !word 0
+ms_stepx: !byte 2, 3, 5, 6      ; units per 1351 count, by speed
+ms_stepy: !byte 3, 5, 8, 10     ; (Y units are 1.6 times smaller)
+
 !zone read_mouse
 read_mouse:
+        lda MB_SPEED
+        and #3
+        tay
+        lda ms_stepx,y
+        sta ms_sx
+        lda ms_stepy,y
+        sta ms_sy
+        ; X: 1351 movement times the step
         lda $d419
         ldy old_potx
         jsr move_check
         sty old_potx
-        cmp #0
-        beq .noxm
+        ldy ms_sx
+        jsr ms_scale
         clc
-        adc mouse_x
-        sta mouse_x
-        txa
-        adc mouse_x+1
-        sta mouse_x+1
-.noxm:  lda $d41a
+        lda ms_x
+        adc irq_t0
+        sta ms_x
+        lda ms_x+1
+        adc irq_t1
+        sta ms_x+1
+        ; Y: the 1351 counts upwards
+        lda $d41a
         ldy old_poty
         jsr move_check
         sty old_poty
-        cmp #0
-        beq .noym
-        ; y -= dy (16 bit via irq_t0/t1 then clamp)
-        sta irq_t0
-        stx irq_t1
+        ldy ms_sy
+        jsr ms_scale
         sec
-        lda mouse_y
+        lda ms_y
         sbc irq_t0
-        sta mouse_y
-        lda #0
+        sta ms_y
+        lda ms_y+1
         sbc irq_t1
-        sta irq_t2              ; high byte of y
-        jsr clamp_y
-.noym:  ; buttons and joystick
+        sta ms_y+1
+        ; buttons: port 1 fire = left, up = right; port 2 fire = left
         lda #$ff
         sta $dc00
-        lda $dc01               ; port 1: mouse (left = fire, right = up)
+        lda $dc01
         sta joy1
-        lda $dc00               ; port 2: joystick
+        lda $dc00
         sta joy2
         lda #0
-        sta irq_t0
+        sta irq_t2
         lda joy1
-        and #$11
-        cmp #$11
-        beq +
-        inc irq_t0
-+       lda joy2
         and #$10
         bne +
         lda #1
-        sta irq_t0
-+       lda irq_t0
-        cmp mbtn
+        sta irq_t2
++       lda joy1
+        and #$01
+        bne +
+        lda irq_t2
+        ora #2
+        sta irq_t2
++       lda joy2
+        and #$10
+        bne +
+        lda irq_t2
+        ora #1
+        sta irq_t2
++       lda irq_t2
+        sta ms_btn
+        beq +
+        lda #1                  ; mbtn: any button
++       cmp mbtn
         beq +
         sta mbtn
         cmp #0
@@ -238,16 +288,54 @@ read_mouse:
         sta press_jiffy
         lda jiffy+1
         sta press_jiffy+1
-+
-        ; joystick movement with acceleration
++       jsr ms_joystick
+        jsr ms_clamp
+        jsr ms_publish
+        jmp ms_pixels
+
+; A = signed count, Y = step -> irq_t0/irq_t1 = count * step (signed)
+ms_scale:
+        sty ms_m
+        sta ms_s
+        cmp #$80
+        bcc +
+        eor #$ff                ; (carry is set: this negates)
+        adc #0
++       sta ms_v
+        lda #0
+        sta irq_t0
+        sta irq_t1
+        ldy ms_v
+        beq .sign
+-       clc
+        lda irq_t0
+        adc ms_m
+        sta irq_t0
+        bcc +
+        inc irq_t1
++       dey
+        bne -
+.sign:  lda ms_s
+        bpl +
+        sec
+        lda #0
+        sbc irq_t0
+        sta irq_t0
+        lda #0
+        sbc irq_t1
+        sta irq_t1
++       rts
+
+; joystick in port 2: 1..6 pixels a frame, speeding up while held
+ms_joystick:
         lda joy2
         and #$0f
         cmp #$0f
-        bne .joy
+        bne +
         lda #0
         sta joy_spd
-        jmp clamp_x
-.joy:   lda joy_spd
+        rts
++       lda joy_spd
         cmp #40
         bcs +
         inc joy_spd
@@ -255,86 +343,198 @@ read_mouse:
         lsr
         lsr
         clc
-        adc #1                  ; speed 1..6
-        sta irq_t1
+        adc #1
+        sta ms_v                ; pixels
+        asl
+        adc ms_v
+        sta ms_jx               ; X units: 3 per pixel
+        lda ms_v
+        asl
+        asl
+        adc ms_v
+        sta ms_jy               ; Y units: 5 per pixel
         lda joy2
         lsr
         bcs +                   ; up
         pha
-        lda mouse_y
         sec
-        sbc irq_t1
-        sta mouse_y
-        lda #0
+        lda ms_y
+        sbc ms_jy
+        sta ms_y
+        lda ms_y+1
         sbc #0
-        sta irq_t2
-        jsr clamp_y
+        sta ms_y+1
         pla
 +       lsr
         bcs +                   ; down
         pha
-        lda mouse_y
         clc
-        adc irq_t1
-        sta mouse_y
-        lda #0
+        lda ms_y
+        adc ms_jy
+        sta ms_y
+        lda ms_y+1
         adc #0
-        sta irq_t2
-        jsr clamp_y
+        sta ms_y+1
         pla
 +       lsr
         bcs +                   ; left
         pha
         sec
-        lda mouse_x
-        sbc irq_t1
-        sta mouse_x
-        lda mouse_x+1
+        lda ms_x
+        sbc ms_jx
+        sta ms_x
+        lda ms_x+1
         sbc #0
-        sta mouse_x+1
+        sta ms_x+1
         pla
 +       lsr
         bcs +                   ; right
         clc
-        lda mouse_x
-        adc irq_t1
-        sta mouse_x
-        lda mouse_x+1
+        lda ms_x
+        adc ms_jx
+        sta ms_x
+        lda ms_x+1
         adc #0
-        sta mouse_x+1
-+       ; fall into clamp_x
+        sta ms_x+1
++       rts
 
-clamp_x:
-        lda mouse_x+1
+; keep X and Y within 0..1023
+ms_clamp:
+        ldx #0
+.c:     lda ms_x+1,x
         bpl +
-        lda #0                  ; negative -> 0
-        sta mouse_x
-        sta mouse_x+1
+        lda #0                  ; below 0
+        sta ms_x,x
+        sta ms_x+1,x
+        beq .n
++       cmp #4
+        bcc .n
+        lda #<1023              ; 1024 or more
+        sta ms_x,x
+        lda #>1023
+        sta ms_x+1,x
+.n:     inx
+        inx
+        cpx #4
+        bne .c
         rts
-+       lda mouse_x
-        cmp #<320
-        lda mouse_x+1
-        sbc #>320
-        bcc +
-        lda #<319
-        sta mouse_x
-        lda #>319
-        sta mouse_x+1
-+       rts
 
-clamp_y:                        ; mouse_y with high byte irq_t2
-        lda irq_t2
-        beq +
-        bpl .max
+; write the block at $fb-$fd
+ms_publish:
         lda #0
+        sta ms_v                ; changed since last time?
+        ldx #4
+-       lda ms_x,x
+        cmp ms_px,x
+        beq +
+        inc ms_v
+        sta ms_px,x
++       dex
+        bpl -
+        lda ms_x+1              ; high 8 bits
+        sta irq_t0
+        lda ms_x
+        lsr irq_t0
+        ror
+        lsr irq_t0
+        ror
+        sta MB_XH
+        lda ms_y+1
+        sta irq_t0
+        lda ms_y
+        lsr irq_t0
+        ror
+        lsr irq_t0
+        ror
+        sta MB_YH
+        lda ms_y                ; low bits
+        and #3
+        asl
+        asl
+        sta irq_t0
+        lda ms_x
+        and #3
+        ora irq_t0
+        sta irq_t0
+        lda ms_btn
+        and #1
+        beq +
+        lda irq_t0
+        ora #$20
+        sta irq_t0
++       lda ms_btn
+        and #2
+        beq +
+        lda irq_t0
+        ora #$40
+        sta irq_t0
++       lda MB_LO               ; "changed" stays set until a program clears it
+        and #$80
+        ldx ms_v
+        beq +
+        lda #$80
++       ora irq_t0
+        sta MB_LO
+        rts
+
+; pixels for the OS: mouse_x = X * 5 / 16, mouse_y = Y * 25 / 128
+ms_pixels:
+        lda ms_x
+        sta irq_t0
+        lda ms_x+1
+        sta irq_t1
+        asl irq_t0
+        rol irq_t1
+        asl irq_t0
+        rol irq_t1
+        clc
+        lda irq_t0
+        adc ms_x
+        sta irq_t0
+        lda irq_t1
+        adc ms_x+1
+        ldx #4
+-       lsr
+        ror irq_t0
+        dex
+        bne -
+        sta mouse_x+1
+        lda irq_t0
+        sta mouse_x
+        lda ms_y                ; Y * 8
+        sta irq_t0
+        lda ms_y+1
+        sta irq_t1
+        ldx #3
+-       asl irq_t0
+        rol irq_t1
+        dex
+        bne -
+        lda irq_t0
+        sta ms_t
+        lda irq_t1
+        sta ms_t+1
+        asl irq_t0              ; Y * 16
+        rol irq_t1
+        clc
+        lda irq_t0
+        adc ms_t
+        sta irq_t0
+        lda irq_t1
+        adc ms_t+1
+        sta irq_t1
+        clc                     ; + Y = Y * 25
+        lda irq_t0
+        adc ms_y
+        sta irq_t0
+        lda irq_t1
+        adc ms_y+1
+        sta irq_t1
+        asl irq_t0              ; / 128 = high byte of (value * 2)
+        rol irq_t1
+        lda irq_t1
         sta mouse_y
         rts
-+       lda mouse_y
-        cmp #200
-        bcc +
-.max:   lda #199
-        sta mouse_y
-+       rts
 
 ; A = new pot value, Y = old.  Returns A = signed delta, X = sign
 ; extension, Y = value to keep as "old" (unchanged if no movement).

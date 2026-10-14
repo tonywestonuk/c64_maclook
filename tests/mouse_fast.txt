@@ -1,0 +1,93 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+600 mouse 111 141
+612 down
+616 up
+628 down
+632 up
+640 mouse 20 20
+641 mouse 300 20
+642 mouse 20 180
+643 mouse 300 180
+644 mouse 20 20
+645 mouse 300 20
+646 mouse 20 180
+647 mouse 300 180
+648 mouse 20 20
+649 mouse 300 20
+650 mouse 20 180
+651 mouse 300 180
+652 mouse 20 20
+653 mouse 300 20
+654 mouse 20 180
+655 mouse 300 180
+656 mouse 20 20
+657 mouse 300 20
+658 mouse 20 180
+659 mouse 300 180
+660 mouse 20 20
+661 mouse 300 20
+662 mouse 20 180
+663 mouse 300 180
+664 mouse 20 20
+665 mouse 300 20
+666 mouse 20 180
+667 mouse 300 180
+668 mouse 20 20
+669 mouse 300 20
+670 mouse 20 180
+671 mouse 300 180
+672 mouse 20 20
+673 mouse 300 20
+674 mouse 20 180
+675 mouse 300 180
+676 mouse 20 20
+677 mouse 300 20
+678 mouse 20 180
+679 mouse 300 180
+680 mouse 20 20
+681 mouse 300 20
+682 mouse 20 180
+683 mouse 300 180
+684 mouse 20 20
+685 mouse 300 20
+686 mouse 20 180
+687 mouse 300 180
+688 mouse 20 20
+689 mouse 300 20
+690 mouse 20 180
+691 mouse 300 180
+692 mouse 20 20
+693 mouse 300 20
+694 mouse 20 180
+695 mouse 300 180
+696 mouse 20 20
+697 mouse 300 20
+698 mouse 20 180
+699 mouse 300 180
+700 mouse 20 20
+701 mouse 300 20
+702 mouse 20 180
+703 mouse 300 180
+704 mouse 20 20
+705 mouse 300 20
+706 mouse 20 180
+707 mouse 300 180
+708 mouse 20 20
+709 mouse 300 20
+710 mouse 20 180
+711 mouse 300 180
+712 mouse 20 20
+713 mouse 300 20
+714 mouse 20 180
+715 mouse 300 180
+716 mouse 20 20
+717 mouse 300 20
+718 mouse 20 180
+719 mouse 300 180
+720 mouse 160 100
+840 dump build/mf1.bin
+840 shot build/mf_1.bmp

@@ -1,0 +1,124 @@
+450 poke fe 0
+450 mouse 0 0
+490 dump build/ms_0_0_0.bin
+491 mouse 319 199
+531 dump build/ms_0_319_199.bin
+532 mouse 319 0
+572 dump build/ms_0_319_0.bin
+573 mouse 0 199
+613 dump build/ms_0_0_199.bin
+614 mouse 160 100
+654 dump build/ms_0_160_100.bin
+655 mouse 165 38
+695 dump build/ms_0_165_38.bin
+696 mouse 202 166
+736 dump build/ms_0_202_166.bin
+737 mouse 24 18
+777 dump build/ms_0_24_18.bin
+778 mouse 274 24
+818 dump build/ms_0_274_24.bin
+819 mouse 187 149
+859 dump build/ms_0_187_149.bin
+860 mouse 29 129
+900 dump build/ms_0_29_129.bin
+901 mouse 109 9
+941 dump build/ms_0_109_9.bin
+942 mouse 44 111
+982 dump build/ms_0_44_111.bin
+983 mouse 214 17
+1023 dump build/ms_0_214_17.bin
+1024 mouse 123 23
+1064 dump build/ms_0_123_23.bin
+1065 poke fe 1
+1065 mouse 0 0
+1105 dump build/ms_1_0_0.bin
+1106 mouse 319 199
+1146 dump build/ms_1_319_199.bin
+1147 mouse 319 0
+1187 dump build/ms_1_319_0.bin
+1188 mouse 0 199
+1228 dump build/ms_1_0_199.bin
+1229 mouse 160 100
+1269 dump build/ms_1_160_100.bin
+1270 mouse 165 38
+1310 dump build/ms_1_165_38.bin
+1311 mouse 202 166
+1351 dump build/ms_1_202_166.bin
+1352 mouse 24 18
+1392 dump build/ms_1_24_18.bin
+1393 mouse 274 24
+1433 dump build/ms_1_274_24.bin
+1434 mouse 187 149
+1474 dump build/ms_1_187_149.bin
+1475 mouse 29 129
+1515 dump build/ms_1_29_129.bin
+1516 mouse 109 9
+1556 dump build/ms_1_109_9.bin
+1557 mouse 44 111
+1597 dump build/ms_1_44_111.bin
+1598 mouse 214 17
+1638 dump build/ms_1_214_17.bin
+1639 mouse 123 23
+1679 dump build/ms_1_123_23.bin
+1680 poke fe 2
+1680 mouse 0 0
+1720 dump build/ms_2_0_0.bin
+1721 mouse 319 199
+1761 dump build/ms_2_319_199.bin
+1762 mouse 319 0
+1802 dump build/ms_2_319_0.bin
+1803 mouse 0 199
+1843 dump build/ms_2_0_199.bin
+1844 mouse 160 100
+1884 dump build/ms_2_160_100.bin
+1885 mouse 165 38
+1925 dump build/ms_2_165_38.bin
+1926 mouse 202 166
+1966 dump build/ms_2_202_166.bin
+1967 mouse 24 18
+2007 dump build/ms_2_24_18.bin
+2008 mouse 274 24
+2048 dump build/ms_2_274_24.bin
+2049 mouse 187 149
+2089 dump build/ms_2_187_149.bin
+2090 mouse 29 129
+2130 dump build/ms_2_29_129.bin
+2131 mouse 109 9
+2171 dump build/ms_2_109_9.bin
+2172 mouse 44 111
+2212 dump build/ms_2_44_111.bin
+2213 mouse 214 17
+2253 dump build/ms_2_214_17.bin
+2254 mouse 123 23
+2294 dump build/ms_2_123_23.bin
+2295 poke fe 3
+2295 mouse 0 0
+2335 dump build/ms_3_0_0.bin
+2336 mouse 319 199
+2376 dump build/ms_3_319_199.bin
+2377 mouse 319 0
+2417 dump build/ms_3_319_0.bin
+2418 mouse 0 199
+2458 dump build/ms_3_0_199.bin
+2459 mouse 160 100
+2499 dump build/ms_3_160_100.bin
+2500 mouse 165 38
+2540 dump build/ms_3_165_38.bin
+2541 mouse 202 166
+2581 dump build/ms_3_202_166.bin
+2582 mouse 24 18
+2622 dump build/ms_3_24_18.bin
+2623 mouse 274 24
+2663 dump build/ms_3_274_24.bin
+2664 mouse 187 149
+2704 dump build/ms_3_187_149.bin
+2705 mouse 29 129
+2745 dump build/ms_3_29_129.bin
+2746 mouse 109 9
+2786 dump build/ms_3_109_9.bin
+2787 mouse 44 111
+2827 dump build/ms_3_44_111.bin
+2828 mouse 214 17
+2868 dump build/ms_3_214_17.bin
+2869 mouse 123 23
+2909 dump build/ms_3_123_23.bin

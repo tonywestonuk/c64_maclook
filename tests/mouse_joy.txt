@@ -1,0 +1,7 @@
+450 mouse 100 100
+500 dump build/mj0.bin
+510 keydown 94
+560 keyup 94
+570 dump build/mj1.bin
+600 mouse 50 50
+650 dump build/mj2.bin

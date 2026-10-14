@@ -9,4 +9,4 @@ fi
 [ -f desktop64.d64 ] || ./build.sh
 FAST=Emul1541Proc=false
 [ "$1" = "real" ] && FAST=Emul1541Proc=true
-exec frodo4/src/Frodo Mouse1351=true desktop64.d64 $FAST
+exec frodo4/src/Frodo Mouse1351=true MouseSync=true desktop64.d64 $FAST
