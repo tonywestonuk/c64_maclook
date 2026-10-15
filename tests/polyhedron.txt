@@ -1,0 +1,43 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+602 mouse 55 142
+614 down
+618 up
+630 down
+634 up
+1094 shot build/ph_ico1.bmp
+1115 shot build/ph_ico2.bmp
+1116 keydown 226
+1118 keydown 1
+1121 keyup 1
+1122 keyup 226
+1302 shot build/ph_tetra.bmp
+1303 keydown 226
+1305 keydown 2
+1308 keyup 2
+1309 keyup 226
+1489 shot build/ph_cube.bmp
+1490 keydown 226
+1492 keydown 3
+1495 keyup 3
+1496 keyup 226
+1676 shot build/ph_octa.bmp
+1677 keydown 226
+1679 keydown 4
+1682 keyup 4
+1683 keyup 226
+1863 shot build/ph_dodeca.bmp
+1864 keydown 226
+1866 keydown 6
+1869 keyup 6
+1870 keyup 226
+2150 shot build/ph_ball.bmp
+2151 keydown 226
+2153 keydown H
+2156 keyup H
+2157 keyup 226
+2437 shot build/ph_ball_wire.bmp
+2438 dump build/ph_state.bin

@@ -1,0 +1,28 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+602 mouse 55 142
+614 down
+618 up
+630 down
+634 up
+994 keydown 226
+996 keydown 6
+999 keyup 6
+1000 keyup 226
+1330 keydown 226
+1332 keydown .
+1335 keyup .
+1336 keyup 226
+1516 shot build/phx_frames.bmp
+1517 keydown 226
+1519 keydown H
+1522 keyup H
+1523 keyup 226
+1653 keydown 226
+1655 keydown H
+1658 keyup H
+1659 keyup 226
+1839 shot build/phx_redraw.bmp

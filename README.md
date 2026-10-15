@@ -10,7 +10,11 @@ the Mac worked before MultiFinder. Its files live on a
 [WiC64](https://wic64.net/web/), an ESP32 Wi-Fi adapter on the user port: the
 WiC64's own flash is the startup disk, and network (SMB) shares, from a PC or
 a NAS, are opened from the desktop. A one-block BOOT program loads the System
-from the flash, about 100 times faster than a 1541.
+from the flash, about 100 times faster than a 1541. The WiC64 is also a
+coprocessor: its **matrix unit** ([docs/npu.md](docs/npu.md)) keeps matrices
+and scripts on the ESP32, does the arithmetic, and can even draw, sending back
+only the bytes of the screen that changed, in a burst the C64 writes straight
+into its bitmap.
 
 Like the Mac's Toolbox, the System is used only through a published API: a
 jump table at a fixed address ([docs/api.md](docs/api.md)), so applications
@@ -24,19 +28,19 @@ Commodore theme: a C= logo in place of the Apple, a happy C64 at start-up.
 |---|---|
 | ![Menus](docs/screenshots/menu.png) | ![Scroll bars](docs/screenshots/scrolling.png) |
 | ![Brickles](docs/screenshots/brickles.png) | ![Spreadsheet](docs/screenshots/spreadsheet.png) |
-| ![Shapes](docs/screenshots/shapes.png) | |
+| ![Shapes](docs/screenshots/shapes.png) | ![Polyhedron](docs/screenshots/polyhedron.png) |
 
 ## What's in it
 
 - **BOOT** (one block, on a floppy or a tape): loads the System from the
-  share and starts it.
-- **System** (a 14K core, and overlays): a QuickDraw-style graphics library
+  WiC64's flash and starts it.
+- **System** (a 16K core, and overlays): a QuickDraw-style graphics library
   (rectangles, lines, ovals, circles and round rects in patterns and copy,
   OR, XOR or erase modes, clipping, proportional Chicago and Geneva style
   fonts, masked icons), window manager, menu manager, alerts and dialogs,
-  event handling with a 1351 mouse or joystick, the WiC64 driver and the
-  file calls (list, read, write, delete, rename, copy, new folder). It
-  boots, then loads the Finder.
+  event handling with a 1351 mouse or joystick, the WiC64 driver, the file
+  calls (list, read, write, delete, rename, copy, new folder) and the
+  matrix unit calls. It boots, then loads the Finder.
 - **Desk accessories** (Calculator, Note Pad, Puzzle, Alarm Clock, Key Caps,
   Control Panel) are out of the System for now. Their source is in
   `src/da_*.asm`; they'll come back as separate files loaded from disk.
@@ -49,6 +53,14 @@ Commodore theme: a C= logo in place of the Apple, a happy C64 at start-up.
 - **Brickles**: a Breakout game. The ball and paddle are hardware sprites.
 - **Shapes**: a QuickDraw demonstration: lines, ovals, circles, round
   rects and random shapes, in a choice of patterns or inverting.
+- **Polyhedron**: the five Platonic solids and a soccer ball (a truncated
+  icosahedron) tumbling in perspective, with their back edges hidden or as
+  wireframes. The WiC64 keeps the solid and a frame script; each frame the
+  C64 sends `RUN 0` (two bytes), and the ESP32 turns the corners, puts them
+  in perspective, works out which faces point at the eye, draws the edges and
+  sends back the changes, straight into the screen. The C64 draws nothing:
+  27 frames a second for the soccer ball in the emulator. The solids are made
+  by `tools/solids.py`.
 - **Spreadsheet**: a small spreadsheet with formulas (`+ - * / ( )`, cell
   references, `SUM AVG MIN MAX COUNT` over ranges), automatic recalculation,
   number formats, and Cut/Copy/Paste through the shared Clipboard.
@@ -85,8 +97,8 @@ shares are separated by `;`).
 - Frodo maps keys by their position on a C64 keyboard, so some symbols are in
   unexpected places: `=` is PageDown, `*` is `]`, `:` is `;`, `+` is `-`,
   and `-` is `=`.
-- Double-click **Brickles**, **Spreadsheet** or **Shapes** in the System Disk
-  window to launch them. Quit brings the Finder back.
+- Double-click **Brickles**, **Spreadsheet**, **Shapes** or **Polyhedron** in
+  the System Disk window to launch them. Quit brings the Finder back.
 
 ### On a real C64
 

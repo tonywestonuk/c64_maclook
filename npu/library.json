@@ -1,0 +1,12 @@
+{
+  "name": "npu",
+  "description": "The WiC64's matrix unit (docs/npu.md), shared by the firmware and Frodo",
+  "license": "GPL-2.0-only",
+  "build": {
+    "srcDir": ".",
+    "includeDir": ".",
+    "srcFilter": [
+      "+<npu.cpp>"
+    ]
+  }
+}

@@ -18,6 +18,8 @@ acme -v1 --msvc -r build/finder.lst -l build/finder.sym "$@" src/finder_main.asm
 acme -v1 --msvc -r build/brickles.lst -l build/brickles.sym "$@" src/brickles_main.asm
 acme -v1 --msvc -r build/sheet.lst -l build/sheet.sym "$@" src/sheet_main.asm
 acme -v1 --msvc -r build/shapes.lst -l build/shapes.sym "$@" src/shapes_main.asm
+python3 tools/solids.py build/solids.asm
+acme -v1 --msvc -r build/polyhedron.lst -l build/polyhedron.sym "$@" src/polyhedron_main.asm
 acme -v1 --msvc -r build/boot.lst -l build/boot.sym "$@" src/bootstrap.asm
 
 # The WiC64's internal flash: the startup disk, with the System Folder and
@@ -31,6 +33,7 @@ cp build/finder.prg "flash/System Folder/Finder.sys"
 cp build/brickles.prg flash/Brickles.app
 cp build/sheet.prg flash/Spreadsheet.app
 cp build/shapes.prg flash/Shapes.app
+cp build/polyhedron.prg flash/Polyhedron.app
 # (share/ is a sample network share: documents, kept in the repository)
 
 # The boot floppy: just BOOT, which loads SYSTEM from the share

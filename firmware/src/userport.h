@@ -34,6 +34,13 @@ namespace Userport {
     uint32_t response_max();
     void respond(uint8_t status, uint32_t size);
 
+    // The same as a burst: no FLAG2 for each byte, the C64 reads back to
+    // back.  At most BURST_MAX bytes of payload; it gives up if the C64
+    // stops reading for BURST_TIMEOUT_US.
+    const uint32_t BURST_MAX = 12000;
+    const uint32_t BURST_TIMEOUT_US = 50000;
+    void respond_burst(uint8_t status, uint32_t size);
+
     // Called often from the main loop: gives up on stalled transfers,
     // and lights the LED while busy
     void poll();

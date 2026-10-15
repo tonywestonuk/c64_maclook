@@ -1,5 +1,5 @@
 diff --git a/src/C64.cpp b/src/C64.cpp
-index 65440ee..b7cee9f 100644
+index 65440ee..7913c6f 100644
 --- a/src/C64.cpp
 +++ b/src/C64.cpp
 @@ -32,6 +32,7 @@
@@ -19,16 +19,17 @@ index 65440ee..b7cee9f 100644
  #include <utility>
  namespace chrono = std::chrono;
  
-@@ -146,6 +149,8 @@ C64::C64() : quit_requested(false), prefs_editor_requested(false), load_snapshot
+@@ -146,6 +149,9 @@ C64::C64() : quit_requested(false), prefs_editor_requested(false), load_snapshot
  	TheCIA2 = TheCPU1541->TheCIA2 = new MOS6526_2(TheCPU, TheVIC, TheCPU1541);
  	TheIEC = new IEC(this);
  	TheTape = new Tape(TheCIA1);
 +	TheWiC64 = TheCIA2->the_wic64 = new WiC64(TheCIA2);
 +	TheWiC64->NewPrefs(&ThePrefs);
++	TheWiC64->SetCycleClock([this] { return cycle_counter; });
  
  	TheCart = new NoCartridge;
  	swap_cartridge(REU_NONE, "", ThePrefs.REUType, ThePrefs.CartridgePath);
-@@ -181,6 +186,7 @@ C64::~C64()
+@@ -181,6 +187,7 @@ C64::~C64()
  	open_close_joysticks(ThePrefs.Joystick1Port, ThePrefs.Joystick2Port, 0, 0);
  
  	delete TheTape;
@@ -36,7 +37,7 @@ index 65440ee..b7cee9f 100644
  	delete TheGCRDisk;
  	delete TheCart;
  	delete TheIEC;
-@@ -311,6 +317,7 @@ int C64::Run()
+@@ -311,6 +318,7 @@ int C64::Run()
  	TheCPU1541->Reset();
  	TheGCRDisk->Reset();
  	TheTape->Reset();
@@ -44,7 +45,7 @@ index 65440ee..b7cee9f 100644
  
  	// Remember start time of first frame
  	frame_start = chrono::steady_clock::now();
-@@ -369,6 +376,8 @@ void C64::Reset(bool clear_memory)
+@@ -369,6 +377,8 @@ void C64::Reset(bool clear_memory)
  	TheCIA2->Reset();
  	TheIEC->Reset();
  	TheCart->Reset();
@@ -53,7 +54,7 @@ index 65440ee..b7cee9f 100644
  	// Note: VIC has no reset input
  
  	if (clear_memory) {
-@@ -415,6 +424,7 @@ void C64::NewPrefs(const Prefs *prefs)
+@@ -415,6 +425,7 @@ void C64::NewPrefs(const Prefs *prefs)
  	TheIEC->NewPrefs(prefs);
  	TheGCRDisk->NewPrefs(prefs);
  	TheTape->NewPrefs(prefs);
@@ -61,7 +62,7 @@ index 65440ee..b7cee9f 100644
  
  	TheSID->NewPrefs(prefs);
  
-@@ -693,6 +703,10 @@ void C64::vblank()
+@@ -693,6 +704,10 @@ void C64::vblank()
  	// Poll keyboard and joysticks
  	poll_input();
  
@@ -72,7 +73,7 @@ index 65440ee..b7cee9f 100644
  	// Handle request for prefs editor
  	if (prefs_editor_requested) {
  		pause();
-@@ -901,6 +915,286 @@ void C64::poll_input()
+@@ -901,6 +916,286 @@ void C64::poll_input()
  	} else {
  		TheCIA1->Joystick2 &= joykey;
  	}
@@ -613,7 +614,7 @@ index 3ca3f6f..dc7c70a 100644
  	uint32_t palette[256];				// Mapping of VIC color values to native ARGB
  
 diff --git a/src/Makefile.am b/src/Makefile.am
-index 606fbbe..06d04fc 100644
+index 606fbbe..4ddeab5 100644
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
 @@ -3,7 +3,7 @@ bin_PROGRAMS = Frodo FrodoLite
@@ -621,10 +622,24 @@ index 606fbbe..06d04fc 100644
      main.cpp main.h Display.cpp Display.h Prefs.cpp Prefs.h SID.cpp SID.h SID_wave_tables.h REU.cpp REU.h \
      IEC.cpp IEC.h 1541fs.cpp 1541fs.h 1541d64.cpp 1541d64.h 1541t64.cpp 1541t64.h 1541gcr.cpp 1541gcr.h \
 -    Tape.cpp Tape.h Cartridge.cpp Cartridge.h SAM.cpp SAM.h 1541_ROM.h Basic_ROM.h Char_ROM.h Kernal_ROM.h \
-+    Tape.cpp Tape.h WiC64.cpp WiC64.h Cartridge.cpp Cartridge.h SAM.cpp SAM.h 1541_ROM.h Basic_ROM.h Char_ROM.h Kernal_ROM.h \
++    Tape.cpp Tape.h WiC64.cpp WiC64.h NPU.cpp Cartridge.cpp Cartridge.h SAM.cpp SAM.h 1541_ROM.h Basic_ROM.h Char_ROM.h Kernal_ROM.h \
      Version.h MenuFont.h C64.h CPUC64.h CPU1541.h VIC.h CIA.h VIA.h
  
  Frodo_SOURCES = $(common_SOURCES) \
+diff --git a/src/NPU.cpp b/src/NPU.cpp
+new file mode 100644
+index 0000000..19f0372
+--- /dev/null
++++ b/src/NPU.cpp
+@@ -0,0 +1,8 @@
++/*
++ *  NPU.cpp - the WiC64's matrix unit, shared with the WiC64 firmware
++ *
++ *  Part of the C64 Mac-look desktop's patches to Frodo (GPL-2.0, like
++ *  Frodo).  The unit itself is in the project's npu/ folder.
++ */
++
++#include "../../npu/npu.cpp"
 diff --git a/src/Prefs.cpp b/src/Prefs.cpp
 index 77f9272..12f5c1d 100644
 --- a/src/Prefs.cpp
@@ -735,10 +750,10 @@ index b90ad07..4d8a0eb 100644
  		last_sid_byte = read_osc3();	// Voice 3 oscillator read-back
 diff --git a/src/WiC64.cpp b/src/WiC64.cpp
 new file mode 100644
-index 0000000..b598446
+index 0000000..a515683
 --- /dev/null
 +++ b/src/WiC64.cpp
-@@ -0,0 +1,737 @@
+@@ -0,0 +1,772 @@
 +/*
 + *  WiC64.cpp - WiC64 network adapter on the user port
 + *
@@ -804,6 +819,7 @@ index 0000000..b598446
 +	response.clear();
 +	response_pos = 0;
 +	response_ready = false;
++	npu.reset();
 +}
 +
 +
@@ -1006,6 +1022,7 @@ index 0000000..b598446
 +	const uint8_t * p = request.data() + header_size;
 +	size_t n = request.size() - header_size;
 +
++	std::string last_message = status_message;
 +	status_message = "Success";
 +	switch (command) {
 +
@@ -1029,6 +1046,7 @@ index 0000000..b598446
 +			reply(ST_OK);
 +			break;
 +		case 0x2a:	// Status message of the last request
++			status_message = last_message;
 +			reply(ST_OK, bytes_of(status_message));
 +			break;
 +		case 0xfe:	// Echo
@@ -1048,6 +1066,11 @@ index 0000000..b598446
 +		case 0x89: cmd_volumes(); break;
 +		case 0x8a: cmd_connect(p, n, true); break;
 +		case 0x8b: cmd_connect(p, n, false); break;
++
++		// The matrix unit; $91 is the same, its response sent in a burst
++		// (no FLAG2 for each byte: here every byte is there at once)
++		case 0x90:
++		case 0x91: cmd_npu(p, n); break;
 +
 +		default:
 +			fail(ST_CLIENT, "Undefined command");
@@ -1476,28 +1499,58 @@ index 0000000..b598446
 +	out.push_back(date >> 8);
 +	reply(ST_OK, out);
 +}
++
++
++/*
++ *  The matrix unit (docs/npu.md)
++ */
++
++void WiC64::SetCycleClock(std::function<uint32_t()> cycles)
++{
++	npu.set_clock([this, cycles] {
++		uint32_t now = cycles();
++		clock_cycles += uint32_t(now - clock_last);
++		clock_last = now;
++		return uint32_t(clock_cycles / 985);	// ms (PAL: 985,248 cycles a second)
++	});
++}
++
++void WiC64::cmd_npu(const uint8_t * p, size_t n)
++{
++	std::vector<uint8_t> out;
++	size_t most = command == 0x91 ? 12000 : protocol == 'E' ? 0xffffff : 0xffff;
++	uint8_t status = npu.run(p, n, out, most);
++	if (status) {
++		fail(status, npu.message());
++	} else {
++		reply(ST_OK, out);
++	}
++}
 diff --git a/src/WiC64.h b/src/WiC64.h
 new file mode 100644
-index 0000000..f2b7305
+index 0000000..39c8ba9
 --- /dev/null
 +++ b/src/WiC64.h
-@@ -0,0 +1,87 @@
+@@ -0,0 +1,98 @@
 +/*
 + *  WiC64.h - WiC64 network adapter on the user port
 + *
 + *  Emulates a WiC64 (an ESP32 on the user port) speaking the WiC64
-+ *  transfer protocol, with a few of its standard commands and the file
-+ *  service of the C64 Mac-look desktop (docs/fileservice.md).  Its
-+ *  volumes are folders on the host: the internal flash (volume 0) and
-+ *  network shares (1 and up).
++ *  transfer protocol, with a few of its standard commands, the file
++ *  service of the C64 Mac-look desktop (docs/fileservice.md) and its
++ *  matrix unit (docs/npu.md).  Its volumes are folders on the host: the
++ *  internal flash (volume 0) and network shares (1 and up).
 + */
 +
 +#ifndef WIC64_H
 +#define WIC64_H
 +
 +#include <cstdint>
++#include <functional>
 +#include <string>
 +#include <vector>
++
++#include "../../npu/npu.h"
 +
 +class MOS6526_2;
 +class Prefs;
@@ -1510,6 +1563,9 @@ index 0000000..f2b7305
 +	void Reset();
 +	void NewPrefs(const Prefs * prefs);
 +	bool Enabled() const { return enabled; }
++
++	// The C64's cycle counter: the matrix unit's clock (C64 time)
++	void SetCycleClock(std::function<uint32_t()> cycles);
 +
 +	// Calls from CIA 2
 +	void SetPA2(bool high);				// PA2: high = C64 sends, low = C64 receives
@@ -1534,6 +1590,7 @@ index 0000000..f2b7305
 +	void cmd_rename(const uint8_t * p, size_t n, bool copy);
 +	void cmd_mkdir(const uint8_t * p, size_t n);
 +	void cmd_stat(const uint8_t * p, size_t n);
++	void cmd_npu(const uint8_t * p, size_t n);
 +
 +	bool host_path(const std::string & rel, std::string & out, int * vol = nullptr);
 +	bool volume_ready(int vol);
@@ -1565,6 +1622,10 @@ index 0000000..f2b7305
 +	bool response_ready = false;
 +
 +	std::string status_message;
++
++	Npu npu{65536};					// The matrix unit
++	uint64_t clock_cycles = 0;		// C64 cycles counted for its clock
++	uint32_t clock_last = 0;
 +};
 +
 +

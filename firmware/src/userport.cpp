@@ -6,10 +6,18 @@
 // every read of $DD01 (a PC2 strobe) is answered with the next byte and
 // a FLAG2 pulse.  A request that arrives while the last one is still
 // being worked on is not acknowledged: the C64 sees a timeout.
+//
+// A burst (respond_burst) skips the FLAG2 for each byte: the C64 reads
+// $DD01 back to back, and the next byte must be on the port before its
+// next read, a few microseconds later.  The interrupt is too slow for
+// that, so a burst is sent from a loop that watches PC2's edge latch.
 
 #include "userport.h"
 #include "soc/gpio_struct.h"
 #include "rom/ets_sys.h"
+#include "driver/gpio.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 namespace Userport {
 
@@ -33,6 +41,7 @@ enum State {
     RESPONSE_READY,     // the response waits for PA2 low
     TURNING,            // FLAG2 sent: the C64's next read starts it
     SENDING,
+    BURST,              // respond_burst has the port
 };
 static volatile State state = IDLE;
 static volatile uint32_t pos = 0;           // receiving: bytes so far
@@ -185,18 +194,23 @@ uint32_t response_max()
     return header_size == 6 ? BUFFER_SIZE - 5 : 0xffff;
 }
 
-void respond(uint8_t status, uint32_t size)
+// The response's header in front of its payload: its whole size
+static uint32_t header(uint8_t status, uint32_t size)
 {
-    size = std::min(size, response_max());
     buffer[0] = status;
     buffer[1] = size & 0xff;
     buffer[2] = (size >> 8) & 0xff;
-    uint32_t total = 3 + size;
     if (header_size == 6) {
         buffer[3] = (size >> 16) & 0xff;
         buffer[4] = (size >> 24) & 0xff;
-        total = 5 + size;
+        return 5 + size;
     }
+    return 3 + size;
+}
+
+void respond(uint8_t status, uint32_t size)
+{
+    uint32_t total = header(status, std::min(size, response_max()));
     portENTER_CRITICAL(&mux);
     send_size = total;
     if (state == PROCESSING) {
@@ -208,6 +222,62 @@ void respond(uint8_t status, uint32_t size)
             flag2();                        // "the response is ready"
         }
     }
+    portEXIT_CRITICAL(&mux);
+}
+
+void respond_burst(uint8_t status, uint32_t size)
+{
+    uint32_t total = header(status, std::min(size, BURST_MAX));
+    portENTER_CRITICAL(&mux);
+    bool ours = state == PROCESSING;
+    if (ours) {
+        state = BURST;                      // (the interrupts leave the port alone)
+    }
+    portEXIT_CRITICAL(&mux);
+    if (!ours) {
+        return;
+    }
+    digitalWrite(PIN_LED, HIGH);
+    uint32_t start = millis();              // the C64 turns the port round
+    while (pa2_high()) {
+        if (millis() - start > 3000) {
+            state = IDLE;
+            return;
+        }
+        delay(1);
+    }
+    // Nothing else on this core until it's done: PC2's interrupt off (its
+    // edges are still latched in GPIO.status), and no task switches
+    const uint32_t timeout = ESP.getCpuFreqMHz() * BURST_TIMEOUT_US;
+    gpio_intr_disable((gpio_num_t)PIN_PC2);
+    vTaskSuspendAll();
+    GPIO.status_w1tc = 1UL << PIN_PC2;
+    flag2();                                // "ready": the C64's next read starts it
+    for (uint32_t i = 0;; i++) {
+        uint32_t t0 = ESP.getCycleCount();
+        bool strobed = true;
+        while (!(GPIO.status & (1UL << PIN_PC2))) {
+            if (ESP.getCycleCount() - t0 > timeout) {
+                strobed = false;            // the C64 stopped reading
+                break;
+            }
+        }
+        GPIO.status_w1tc = 1UL << PIN_PC2;
+        if (!strobed || i == total) {       // (the read of the last byte)
+            break;
+        }
+        write_port(buffer[i]);
+        if (i == 0) {
+            port_output();
+        }
+    }
+    port_input();
+    GPIO.status_w1tc = 1UL << PIN_PC2;
+    xTaskResumeAll();
+    gpio_intr_enable((gpio_num_t)PIN_PC2);
+    portENTER_CRITICAL(&mux);
+    state = IDLE;
+    last_activity = now_ms();
     portEXIT_CRITICAL(&mux);
 }
 

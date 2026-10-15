@@ -307,6 +307,10 @@ ln_fast:
         jsr .inclip
         ldx #3
         jsr .inclip
+        jsr lf_fast             ; solid black or white: the quick way
+        bcs +
+        rts
++
         ; start address and bit
         lda pl_y
         lsr
@@ -543,6 +547,218 @@ ln_fast:
 .outc:  lda #1
         sta lf_clip
         rts
+
+; ---------------------------------------------------------------------
+; lf_fast: ln_fast for the commonest lines, in solid black or white,
+; wholly inside the clip rect and less than 256 pixels across: one
+; tight loop per axis, the pixel operation and the direction across
+; patched in.  Carry clear if it drew the line (or there was nothing to
+; draw), set to leave it to ln_fast.  The line is always walked
+; downwards, so a line drawn twice (to rub it out with M_XOR) covers
+; the same pixels.  Uses t2..t4 and t7.
+; ---------------------------------------------------------------------
+LF_ORA = $05            ; opcodes, zero page operand
+LF_EOR = $45
+LF_BIT = $24
+LF_LSR = $46
+LF_ASL = $06
+LF_ROR = $66
+LF_ROL = $26
+lf_mask = t7
+
+; per colour (black, white) and mode (M_COPY, M_OR, M_XOR, M_BIC): the
+; two operations on the byte (0: nothing to draw)
+lf_op1: !byte LF_ORA, LF_ORA, LF_EOR, LF_ORA,  LF_ORA, 0, 0, 0
+lf_op2: !byte LF_BIT, LF_BIT, LF_BIT, LF_EOR,  LF_EOR, 0, 0, 0
+
+!zone lf_fast
+lf_fast:
+        lda lf_clip
+        ora ln_dx+1
+        bne .no
+        ldx #0                  ; the colour: 0 black, 1 white
+        lda pat+1
+        cmp #>pat_black
+        bne +
+        lda pat
+        cmp #<pat_black
+        beq .colour
++       inx
+        lda pat+1
+        cmp #>pat_white
+        bne .no
+        lda pat
+        cmp #<pat_white
+        bne .no
+.colour:
+        txa
+        asl
+        asl
+        ora rmode
+        tax
+        lda lf_op1,x
+        bne +
+        clc                     ; (white, not copied: nothing changes)
+        rts
+.no:    sec
+        rts
++       sta .yo1
+        sta .xo1
+        lda lf_op2,x
+        sta .yo2
+        sta .xo2
+        ; downwards: if the line goes up, start from its other end
+        lda ln_sy
+        bpl +
+        lda ln_x2
+        sta pl_x
+        lda ln_x2+1
+        sta pl_x+1
+        lda ry2
+        sta pl_y
+        lda ln_sx
+        eor #$fe                ; (1 <-> $ff)
+        sta ln_sx
++       ; across: right or left
+        ldx #0
+        lda ln_sx
+        bpl +
+        ldx #4
++       lda .shift,x
+        sta .yx1
+        sta .xx1
+        lda .shift+1,x
+        sta .yx2
+        sta .xx2
+        lda .shift+2,x
+        sta .yx3+1
+        sta .xx3+1
+        lda .shift+3,x
+        sta .yx4+1
+        sta .xx4+1
+        ; the start's byte and bit
+        lda pl_y
+        lsr
+        lsr
+        lsr
+        tax
+        lda pl_x+1
+        lsr
+        lda pl_x
+        ror
+        lsr
+        lsr
+        tay
+        clc
+        lda crow_lo,x
+        adc col8_lo,y
+        sta p0
+        lda crow_hi,x
+        adc col8_hi,y
+        sta p0+1
+        lda pl_x
+        and #7
+        tax
+        lda bit_tab,x
+        sta lf_mask
+        lda ln_dx
+        sta t3
+        lda ln_dy
+        sta t4
+        lda pl_y
+        and #7
+        tay
+        lda t3
+        cmp t4
+        bcs .xmajor
+        ; --- y major: dy+1 pixels, one a row
+        lda t4
+        lsr
+        sta t2                  ; err = dy / 2
+        ldx t4
+        inx
+.ym:    lda (p0),y
+.yo1:   ora lf_mask
+.yo2:   bit lf_mask
+        sta (p0),y
+        dex
+        beq .done
+        iny                     ; down a row
+        cpy #8
+        bne +
+        ldy #0
+        clc
+        lda p0
+        adc #<320
+        sta p0
+        lda p0+1
+        adc #>320
+        sta p0+1
++       lda t2                  ; err -= dx
+        sec
+        sbc t3
+        sta t2
+        bcs .ym
+        adc t4                  ; below 0: err += dy, and across
+        sta t2
+.yx1:   lsr lf_mask
+        bcc .ym
+.yx2:   ror lf_mask
+        clc
+        lda p0
+.yx3:   adc #8
+        sta p0
+        lda p0+1
+.yx4:   adc #0
+        sta p0+1
+        jmp .ym
+.done:  clc
+        rts
+        ; --- x major: dx+1 pixels, one a column
+.xmajor:
+        lda t3
+        lsr
+        sta t2                  ; err = dx / 2
+        ldx t3
+        inx
+.xm:    lda (p0),y
+.xo1:   ora lf_mask
+.xo2:   bit lf_mask
+        sta (p0),y
+        dex
+        beq .done
+.xx1:   lsr lf_mask             ; across
+        bcc +
+.xx2:   ror lf_mask
+        clc
+        lda p0
+.xx3:   adc #8
+        sta p0
+        lda p0+1
+.xx4:   adc #0
+        sta p0+1
++       lda t2                  ; err -= dy
+        sec
+        sbc t4
+        sta t2
+        bcs .xm
+        adc t3                  ; below 0: err += dx, and down a row
+        sta t2
+        iny
+        cpy #8
+        bne .xm
+        ldy #0
+        clc
+        lda p0
+        adc #<320
+        sta p0
+        lda p0+1
+        adc #>320
+        sta p0+1
+        jmp .xm
+; right: lsr, ror, +8; left: asl, rol, -8
+.shift: !byte LF_LSR, LF_ROR, 8, 0
+        !byte LF_ASL, LF_ROL, $f8, $ff
 
 ; ---------------------------------------------------------------------
 ; Ovals.  All the curved shapes are an ellipse with half-widths a, b

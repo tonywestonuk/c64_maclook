@@ -51,6 +51,7 @@ nr_cmd:  !byte 0
 nr_n:    !byte 0        ; request bytes in NET_REQ
 nr_size: !word 0
 nr_prg:  !byte 0        ; 1: the first two bytes of the response are its address
+nr_burst: !byte 0       ; 1: the response is screen changes, in a burst (npu_draw)
 
 ; ---------------------------------------------------------------------
 ; The user port
@@ -170,7 +171,10 @@ net_request:
         jmp .nowic
 .bf166:
         lda $dd01               ; ready for the first byte
-        jsr net_get             ; status, size
+        lda nr_burst
+        beq +
+        jmp nr_burst_recv
++       jsr net_get             ; status, size
         bcs .nowic
         sta fs_status
         jsr net_get
@@ -225,6 +229,7 @@ net_request:
         rts
 .nowic: lda #0
         sta $dd03
+        sta nr_burst
         lda #FS_NOWIC64
         sta fs_status
         sec
@@ -239,6 +244,131 @@ net_request:
 ++      dec nr_size
         lda #1                  ; (Z clear)
 +       rts
+
+; ---------------------------------------------------------------------
+; npu_draw's response, in a burst: read after read, without waiting for
+; FLAG2 (the WiC64 has each byte on the port before the next read, the
+; quickest being 7 cycles later).  Status, size, then runs of bytes for
+; the bitmap: offset (2; bit 15 set: 8 apart, along a pixel row), count,
+; the bytes.  A run that would go outside the bitmap is not written; the
+; rest is read and dropped, and the status is FS_IOERR.
+; ---------------------------------------------------------------------
+nb_hi:  !byte 0
+nb_n:   !byte 0
+
+!zone nr_burst_recv
+nr_burst_recv:
+        lda #0
+        sta nr_burst
+        lda $dd01               ; status
+        sta fs_status
+        lda $dd01               ; size
+        sta nr_size
+        lda $dd01
+        sta nr_size+1
+.run:   lda nr_size+1           ; a header left?
+        bne .head
+        lda nr_size
+        bne +
+        jmp .done
++       cmp #3
+        bcs .head
+        jmp .drop
+.head:  lda $dd01               ; offset
+        sta p4
+        lda $dd01
+        sta nb_hi
+        lda $dd01               ; count
+        sta nb_n
+        sec                     ; the header is read
+        lda nr_size
+        sbc #3
+        sta nr_size
+        bcs +
+        dec nr_size+1
++       sec                     ; are the bytes there?
+        lda nr_size
+        sbc nb_n
+        tax
+        lda nr_size+1
+        sbc #0
+        bcc .drop
+        stx nr_size             ; (they will be)
+        sta nr_size+1
+        ldx nb_n
+        beq .run
+        dex                     ; the run's last byte: offset + (count - 1) * step
+        stx t0
+        lda #0
+        sta t1
+        bit nb_hi
+        bpl +
+        cpx #32                 ; (8 apart: at most 32)
+        bcs .bad
+        txa
+        asl
+        asl
+        asl
+        sta t0
+        rol t1
++       lda nb_hi
+        and #$1f
+        sta p4+1
+        clc
+        lda p4
+        adc t0
+        lda p4+1
+        adc t1
+        cmp #>8000              ; below 8000?
+        bcc .ok
+        bne .bad
+        clc
+        lda p4
+        adc t0
+        cmp #<8000
+        bcs .bad
+.ok:    lda p4+1                ; in the bitmap
+        ora #>BITMAP
+        sta p4+1
+        ldx nb_n
+        ldy #0
+        bit nb_hi
+        bmi .eight
+-       lda $dd01
+        sta (p4),y
+        iny
+        dex
+        bne -
+        jmp .run
+.eight: lda $dd01
+        sta (p4),y
+        tya
+        clc
+        adc #8
+        tay
+        dex
+        bne .eight
+        jmp .run
+.bad:   clc                     ; not written: its bytes are dropped too
+        lda nr_size
+        adc nb_n
+        sta nr_size
+        bcc .drop
+        inc nr_size+1
+.drop:  lda nr_size             ; read what is left, and drop it
+        ora nr_size+1
+        beq .err
+        lda $dd01
+        lda nr_size
+        bne +
+        dec nr_size+1
++       dec nr_size
+        jmp .drop
+.err:   lda #FS_IOERR
+        sta fs_status
+.done:  lda fs_status
+        cmp #1                  ; carry set unless 0
+        rts
 
 ; ---------------------------------------------------------------------
 ; Building requests in NET_REQ
@@ -431,4 +561,96 @@ fs_twopaths:
         inx
         jsr nr_path1
         pla
+        jmp net_request
+
+; ---------------------------------------------------------------------
+; The WiC64's matrix unit (docs/npu.md): a program of instructions on
+; its 32 matrix registers, run on the ESP32; it can keep scripts there
+; ---------------------------------------------------------------------
+NPU_COMMAND = $90       ; the WiC64 command
+NPU_BURST   = $91       ; .. its response sent in a burst (npu_draw)
+
+NPU_END     = $00       ; instructions
+NPU_LOAD    = $01       ; r rows cols format data
+NPU_STORE   = $02       ; r format -> rows cols data
+NPU_FILL    = $03       ; r rows cols k
+NPU_IDENT   = $04       ; r n
+NPU_RANGE   = $05       ; r rows cols start step
+NPU_COPY    = $06       ; d a
+NPU_TRANSP  = $07       ; d a
+NPU_JOIN    = $08       ; d a b how
+NPU_FREE    = $09       ; r
+NPU_RESET   = $0a
+NPU_DEFINE  = $0b       ; s length(2) bytes: keep a script
+NPU_RUN     = $0c       ; s: run it
+NPU_CLOCK   = $0d       ; r: seconds since the last CLOCK
+NPU_ADD     = $10       ; d a b
+NPU_SUB     = $11       ; d a b
+NPU_EMUL    = $12       ; d a b
+NPU_EDIV    = $13       ; d a b
+NPU_MUL     = $14       ; d a b
+NPU_SCALE   = $15       ; d a k
+NPU_OFFSET  = $16       ; d a k
+NPU_APPLY   = $17       ; d a function
+NPU_SOFTMAX = $18       ; d a
+NPU_SUM     = $19       ; d a how
+NPU_ARGMAX  = $1a       ; d a
+NPU_PICK    = $1b       ; d a b row: elements of a, numbered by row of b
+NPU_ROTATE  = $20       ; r axis angle
+NPU_PROJECT = $21       ; d a k
+NPU_TURN    = $22       ; d axis a i: rotation by element i of a (radians)
+NPU_SCREEN  = $30       ; x(2) y(2) w(2) h(2): where to draw on the screen
+NPU_CLEAR   = $31       ; white
+NPU_LINES   = $32       ; p e m: lines between points, where mask m > 0
+NPU_SEND    = $33       ; -> the bytes of the screen that changed
+NPU_ALL     = 255       ; LINES: no mask
+
+NPU_S16     = $00       ; formats (+ fraction bits)
+NPU_S8      = $10
+NPU_U8      = $20
+
+NPU_X       = 0         ; ROTATE axes
+NPU_Y       = 1
+NPU_Z       = 2
+NPU_PLANE   = 3
+
+NPU_BESIDE  = 0         ; JOIN
+NPU_BELOW   = 1
+
+NPU_NEG     = 0         ; APPLY functions
+NPU_ABS     = 1
+NPU_RELU    = 2
+NPU_SIGMOID = 3
+NPU_TANH    = 4
+NPU_SQRT    = 5
+NPU_EXP     = 6
+NPU_LOG     = 7
+NPU_SIN     = 8
+NPU_COS     = 9
+NPU_ROUND   = 10
+NPU_FLOOR   = 11
+NPU_SQUARE  = 12
+NPU_STEP    = 13        ; 1 above 0, else 0
+
+NPU_BADPROG = 20        ; status codes
+NPU_EMPTY   = 32
+NPU_SIZES   = 33
+NPU_MEMORY  = 34
+NPU_TOOMUCH = 35
+
+; npu_run: the program at (fs_dptr), fs_dlen bytes; the results to
+; (fs_rptr), at most fs_rmax bytes, their length in fs_rlen
+; npu_draw: as npu_run, for a program whose results are changes to the
+; screen (SEND): they are received in a burst, straight into the bitmap
+npu_draw:
+        lda #1
+        sta nr_burst
+        lda #NPU_BURST
+        bne wic_request
+npu_run:
+        lda #NPU_COMMAND
+; wic_request: WiC64 command A, with fs_dlen bytes from (fs_dptr); the
+; response to (fs_rptr), at most fs_rmax bytes
+wic_request:
+        ldx #0
         jmp net_request

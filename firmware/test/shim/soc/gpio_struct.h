@@ -16,6 +16,8 @@ struct GpioReg {
 struct GpioDev {
     volatile uint32_t in;       // the levels on GPIO 0-31
     GpioReg out_w1ts, out_w1tc, enable_w1ts, enable_w1tc;
+    volatile uint32_t status;   // edges latched (interrupt status)
+    GpioReg status_w1tc;
 };
 
 extern GpioDev GPIO;

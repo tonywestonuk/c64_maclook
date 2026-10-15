@@ -7,7 +7,7 @@ type Games
 key Return
 wait 60
 shot v3_1
-drag 55 69 55 141
+drag 55 69 122 141
 wait 80
 shot v3_2
 drag 191 69 296 168

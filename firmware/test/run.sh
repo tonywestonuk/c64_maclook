@@ -1,7 +1,7 @@
 #!/bin/sh
 # run.sh - the firmware's test bench, on the host (see c64sim.cpp)
 #
-#   test/run.sh             the protocol and the flash volume
+#   test/run.sh             the protocol, the flash volume and the matrix unit
 #   test/run.sh --smb       also a network share, served by impacket on
 #                           127.0.0.1:4450 (pip install impacket; see
 #                           smbserver.py; PYTHON= the python that has it)
@@ -24,8 +24,8 @@ if [ ! -f $B/libsmb2/lib/libsmb2.a ]; then
     cmake --build $B/libsmb2 --target smb2 -j 8 >> $B/libsmb2.log
 fi
 
-c++ -std=c++17 -g -O1 -Wall -Wno-unused-function -Ishim -I$FW/lib/libsmb2/libsmb2/include \
-    -o $B/c64sim c64sim.cpp shim/shim.cpp \
+c++ -std=c++17 -g -O1 -Wall -Wno-unused-function -Ishim -I$FW/lib/libsmb2/libsmb2/include -I../../npu \
+    -o $B/c64sim c64sim.cpp shim/shim.cpp ../../npu/npu.cpp \
     $FW/src/userport.cpp $FW/src/fileservice.cpp $FW/src/flash_volume.cpp $FW/src/smb_volume.cpp \
     $B/libsmb2/lib/libsmb2.a -lpthread
 

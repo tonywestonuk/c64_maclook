@@ -1,5 +1,6 @@
 // fileservice.h - the C64's requests: a few of the WiC64's standard
-// commands and the file service (docs/fileservice.md)
+// commands, the file service (docs/fileservice.md) and the matrix unit
+// (docs/npu.md)
 
 #pragma once
 #include <Arduino.h>
@@ -8,6 +9,9 @@
 
 namespace FileService {
     extern std::vector<Volume *> volumes;
+
+    // The matrix unit's command whose response is sent in a burst
+    const uint8_t BURST_COMMAND = 0x91;
 
     // The volumes, from the settings
     void begin();

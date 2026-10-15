@@ -71,6 +71,12 @@ uint32_t millis();
 void delay(uint32_t ms);
 int64_t esp_timer_get_time();
 
+struct EspClass {
+    uint32_t getCycleCount();   // (a 240 MHz count, from the host's clock)
+    uint32_t getCpuFreqMHz() { return 240; }
+};
+extern EspClass ESP;
+
 // GPIO (see soc/gpio_struct.h)
 enum { LOW = 0, HIGH = 1, INPUT = 1, OUTPUT = 3, INPUT_PULLUP = 5, FALLING = 2 };
 void pinMode(int pin, int mode);

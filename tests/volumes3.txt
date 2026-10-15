@@ -13,14 +13,14 @@
 819 shot build/v3_1.bmp
 820 mouse 55 69
 832 down
-840 mouse 55 78
-843 mouse 55 87
-846 mouse 55 96
-849 mouse 55 105
-852 mouse 55 114
-855 mouse 55 123
-858 mouse 55 132
-861 mouse 55 141
+840 mouse 63 78
+843 mouse 71 87
+846 mouse 80 96
+849 mouse 88 105
+852 mouse 96 114
+855 mouse 105 123
+858 mouse 113 132
+861 mouse 122 141
 874 up
 1004 shot build/v3_2.bmp
 1005 mouse 191 69

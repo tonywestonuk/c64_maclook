@@ -63,6 +63,7 @@ void WiC64::Reset()
 	response.clear();
 	response_pos = 0;
 	response_ready = false;
+	npu.reset();
 }
 
 
@@ -265,6 +266,7 @@ void WiC64::request_complete()
 	const uint8_t * p = request.data() + header_size;
 	size_t n = request.size() - header_size;
 
+	std::string last_message = status_message;
 	status_message = "Success";
 	switch (command) {
 
@@ -288,6 +290,7 @@ void WiC64::request_complete()
 			reply(ST_OK);
 			break;
 		case 0x2a:	// Status message of the last request
+			status_message = last_message;
 			reply(ST_OK, bytes_of(status_message));
 			break;
 		case 0xfe:	// Echo
@@ -307,6 +310,11 @@ void WiC64::request_complete()
 		case 0x89: cmd_volumes(); break;
 		case 0x8a: cmd_connect(p, n, true); break;
 		case 0x8b: cmd_connect(p, n, false); break;
+
+		// The matrix unit; $91 is the same, its response sent in a burst
+		// (no FLAG2 for each byte: here every byte is there at once)
+		case 0x90:
+		case 0x91: cmd_npu(p, n); break;
 
 		default:
 			fail(ST_CLIENT, "Undefined command");
@@ -734,4 +742,31 @@ void WiC64::cmd_stat(const uint8_t * p, size_t n)
 	out.push_back(date & 0xff);
 	out.push_back(date >> 8);
 	reply(ST_OK, out);
+}
+
+
+/*
+ *  The matrix unit (docs/npu.md)
+ */
+
+void WiC64::SetCycleClock(std::function<uint32_t()> cycles)
+{
+	npu.set_clock([this, cycles] {
+		uint32_t now = cycles();
+		clock_cycles += uint32_t(now - clock_last);
+		clock_last = now;
+		return uint32_t(clock_cycles / 985);	// ms (PAL: 985,248 cycles a second)
+	});
+}
+
+void WiC64::cmd_npu(const uint8_t * p, size_t n)
+{
+	std::vector<uint8_t> out;
+	size_t most = command == 0x91 ? 12000 : protocol == 'E' ? 0xffffff : 0xffff;
+	uint8_t status = npu.run(p, n, out, most);
+	if (status) {
+		fail(status, npu.message());
+	} else {
+		reply(ST_OK, out);
+	}
 }

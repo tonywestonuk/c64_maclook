@@ -173,6 +173,14 @@ A, X, Y and the zero page registers below.
 | `$0930` | `fs_connect` | A = volume: connect a network share |
 | `$0933` | `fs_disconnect` | A = volume: disconnect it |
 
+### The WiC64's matrix unit (docs/npu.md); carry set on error, A = status
+
+| Address | Call | |
+|---|---|---|
+| `$0936` | `npu_run` | program at (fs_dptr), fs_dlen bytes: results to (fs_rptr), fs_rlen bytes |
+| `$0939` | `wic_request` | WiC64 command A, data from (fs_dptr): response to (fs_rptr) |
+| `$093c` | `npu_draw` | program at (fs_dptr), fs_dlen bytes: its screen changes (SEND) into the bitmap |
+
 ## Public data
 
 Fixed addresses after the jump table. Applications read these and set the

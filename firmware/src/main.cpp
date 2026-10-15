@@ -40,10 +40,15 @@ void loop()
     if (Userport::buffer && Userport::request(protocol, command, payload, size)) {
         uint32_t out_len = 0;
         uint8_t *scratch = Userport::buffer + SCRATCH_OFFSET;
-        uint8_t status = FileService::handle(command, payload, size,
-                                             Userport::response_payload(), Userport::response_max(), out_len,
+        bool burst = command == FileService::BURST_COMMAND;
+        uint8_t status = FileService::handle(command, payload, size, Userport::response_payload(),
+                                             burst ? Userport::BURST_MAX : Userport::response_max(), out_len,
                                              scratch, Userport::BUFFER_SIZE - SCRATCH_OFFSET);
-        Userport::respond(status, out_len);
+        if (burst) {
+            Userport::respond_burst(status, out_len);
+        } else {
+            Userport::respond(status, out_len);
+        }
     }
     Userport::poll();
     WebUI::loop();

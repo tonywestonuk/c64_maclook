@@ -1,0 +1,30 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+602 mouse 55 142
+614 down
+618 up
+630 down
+634 up
+994 dump build/phs_ico_a.bin
+1245 dump build/phs_ico_b.bin
+1246 keydown 226
+1248 keydown 2
+1251 keyup 2
+1252 keyup 226
+1382 dump build/phs_cube_a.bin
+1633 dump build/phs_cube_b.bin
+1634 keydown 226
+1636 keydown 6
+1639 keyup 6
+1640 keyup 226
+1770 dump build/phs_ball_a.bin
+2021 dump build/phs_ball_b.bin
+2022 keydown 226
+2024 keydown H
+2027 keyup H
+2028 keyup 226
+2158 dump build/phs_wire_a.bin
+2409 dump build/phs_wire_b.bin

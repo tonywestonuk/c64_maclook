@@ -10,7 +10,13 @@ port) that makes it the desktop's file server, as Frodo's emulated WiC64 is:
   desktop; it is connected when its icon is opened.
 - The file service the System uses ([../docs/fileservice.md](../docs/fileservice.md)),
   over the WiC64's own transfer protocol, on the same pins and with the same
-  handshake as the official firmware. A few of the standard commands are
+  handshake as the official firmware.
+- The matrix unit ([../docs/npu.md](../docs/npu.md)): matrices and scripts
+  kept on the ESP32, which does the arithmetic for the C64 and can draw on a
+  copy of its screen (`../npu`, the same code as in Frodo's emulated WiC64).
+  Its screen changes are sent in a **burst** (command `$91`): no FLAG2 for
+  each byte, the C64 reads back to back, and the ESP32 puts each byte out
+  from a loop that watches PC2's edge latch. A few of the standard commands are
   there too (`$00` version, `$06` IP address, `$10` SSID, `$2A` status
   message, `$FE` echo).
 
@@ -79,6 +85,9 @@ user and password (leave the user empty to log in as a guest).
   other characters. Names starting with `.` are hidden.
 - Reads are at most 64K at a time (the protocol's limit); the System reads
   whole files of up to 64K.
+- A burst response is at most 12,000 bytes. While it is sent, the task
+  scheduler is paused on the second core (for a few milliseconds; Wi-Fi goes
+  on, on the first).
 - The C64 waits about four seconds for each answer; a share that doesn't
   answer in time (say, a server that is asleep) gives an error on the C64.
 - The web page has no password: anyone on your network can change the
@@ -91,14 +100,16 @@ test/run.sh             # the transfer protocol and the flash volume
 test/run.sh --smb       # and a network share (needs impacket: pip install impacket)
 ```
 
-`test/c64sim.cpp` builds the firmware's user port driver, file service and
-volumes on the host, with stand-ins for the Arduino core in `test/shim`
+`test/c64sim.cpp` builds the firmware's user port driver, file service,
+volumes and matrix unit on the host, with stand-ins for the Arduino core in `test/shim`
 (the flash is a copy of `flash/`), and plays the C64's side of the
 handshake exactly as `src/net.asm` does: each byte written to `$DD01`, a
 wait for FLAG2, the turn round on PA2, the reads. It checks the protocol (a
 response left unread, a request broken off, both sides never driving the
-port at once) and every file service command on the flash and on an SMB
-share served by impacket (`test/smbserver.py`, which corrects two ways in
+port at once), the matrix unit's instructions and scripts, its drawing
+and the burst (the C64's reads not waiting for FLAG2, the ESP32 answering
+from PC2's edge latch), and every file service command on the flash and on
+an SMB share served by impacket (`test/smbserver.py`, which corrects two ways in
 which impacket's replies differ from real servers).
 
 ## The source
@@ -108,6 +119,7 @@ which impacket's replies differ from real servers).
 | `src/main.cpp` | Start-up, and the main loop: take a request, answer it |
 | `src/userport.cpp` | The transfer protocol, in the PC2 and PA2 interrupts |
 | `src/fileservice.cpp` | The commands, as in Frodo's `WiC64.cpp` |
+| `../npu/npu.cpp` | The matrix unit (shared with Frodo) |
 | `src/flash_volume.cpp` | Volume 0, on LittleFS |
 | `src/smb_volume.cpp` | A network share, with libsmb2 (reconnects if the server drops it) |
 | `src/settings.cpp` | The settings, in the ESP32's NVS |

@@ -151,6 +151,7 @@ C64::C64() : quit_requested(false), prefs_editor_requested(false), load_snapshot
 	TheTape = new Tape(TheCIA1);
 	TheWiC64 = TheCIA2->the_wic64 = new WiC64(TheCIA2);
 	TheWiC64->NewPrefs(&ThePrefs);
+	TheWiC64->SetCycleClock([this] { return cycle_counter; });
 
 	TheCart = new NoCartridge;
 	swap_cartridge(REU_NONE, "", ThePrefs.REUType, ThePrefs.CartridgePath);

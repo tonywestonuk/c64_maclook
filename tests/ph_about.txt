@@ -1,0 +1,15 @@
+450 mouse 292 30
+462 down
+466 up
+478 down
+482 up
+602 mouse 55 142
+614 down
+618 up
+630 down
+634 up
+994 mouse 12 5
+1006 down
+1026 mouse 12 16
+1046 up
+1146 shot build/pha_about.bmp

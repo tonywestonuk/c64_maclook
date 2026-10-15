@@ -2,18 +2,21 @@
  *  WiC64.h - WiC64 network adapter on the user port
  *
  *  Emulates a WiC64 (an ESP32 on the user port) speaking the WiC64
- *  transfer protocol, with a few of its standard commands and the file
- *  service of the C64 Mac-look desktop (docs/fileservice.md).  Its
- *  volumes are folders on the host: the internal flash (volume 0) and
- *  network shares (1 and up).
+ *  transfer protocol, with a few of its standard commands, the file
+ *  service of the C64 Mac-look desktop (docs/fileservice.md) and its
+ *  matrix unit (docs/npu.md).  Its volumes are folders on the host: the
+ *  internal flash (volume 0) and network shares (1 and up).
  */
 
 #ifndef WIC64_H
 #define WIC64_H
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <vector>
+
+#include "../../npu/npu.h"
 
 class MOS6526_2;
 class Prefs;
@@ -26,6 +29,9 @@ public:
 	void Reset();
 	void NewPrefs(const Prefs * prefs);
 	bool Enabled() const { return enabled; }
+
+	// The C64's cycle counter: the matrix unit's clock (C64 time)
+	void SetCycleClock(std::function<uint32_t()> cycles);
 
 	// Calls from CIA 2
 	void SetPA2(bool high);				// PA2: high = C64 sends, low = C64 receives
@@ -50,6 +56,7 @@ private:
 	void cmd_rename(const uint8_t * p, size_t n, bool copy);
 	void cmd_mkdir(const uint8_t * p, size_t n);
 	void cmd_stat(const uint8_t * p, size_t n);
+	void cmd_npu(const uint8_t * p, size_t n);
 
 	bool host_path(const std::string & rel, std::string & out, int * vol = nullptr);
 	bool volume_ready(int vol);
@@ -81,6 +88,10 @@ private:
 	bool response_ready = false;
 
 	std::string status_message;
+
+	Npu npu{65536};					// The matrix unit
+	uint64_t clock_cycles = 0;		// C64 cycles counted for its clock
+	uint32_t clock_last = 0;
 };
 
 

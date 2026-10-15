@@ -122,6 +122,10 @@ JT_SLOTS   = 128
         jmp fs_volumes          ; the volumes: number, kind, connected, KB, free KB, name
         jmp fs_connect          ; A = volume: connect a network share
         jmp fs_disconnect       ; A = volume: disconnect it
+; --- the WiC64's matrix unit (docs/npu.md); carry set on error, A = status
+        jmp npu_run             ; program at (fs_dptr), fs_dlen bytes: results to (fs_rptr), fs_rlen bytes
+        jmp wic_request         ; WiC64 command A, data from (fs_dptr): response to (fs_rptr)
+        jmp npu_draw            ; program at (fs_dptr), fs_dlen bytes: its screen changes (SEND) into the bitmap
 
 !if * > JUMP_TABLE + JT_SLOTS*3 { !error "jump table full" }
         !fill JUMP_TABLE + JT_SLOTS*3 - *, $60

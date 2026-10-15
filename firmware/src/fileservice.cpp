@@ -1,5 +1,6 @@
 // fileservice.cpp - the C64's requests: a few of the WiC64's standard
-// commands and the file service (docs/fileservice.md)
+// commands, the file service (docs/fileservice.md) and the matrix unit
+// (docs/npu.md)
 //
 // The same service as Frodo's emulated WiC64 (frodo4/src/WiC64.cpp),
 // on the ESP32's flash and network shares.
@@ -8,6 +9,7 @@
 #include "settings.h"
 #include <WiFi.h>
 #include <algorithm>
+#include <npu.h>
 
 namespace FileService {
 
@@ -409,6 +411,22 @@ static uint8_t cmd_stat(const uint8_t *p, uint32_t n)
     return ST_OK;
 }
 
+// The matrix unit: its results are gathered apart, as the response
+// overlaps the program
+static Npu npu(8192);
+
+static uint8_t cmd_npu(const uint8_t *p, uint32_t n)
+{
+    std::vector<uint8_t> results;
+    uint8_t st = npu.run(p, n, results, out_max);
+    if (st) {
+        return fail(st, npu.message().c_str());
+    }
+    memcpy(out_buf, results.data(), results.size());
+    out_n = results.size();
+    return ST_OK;
+}
+
 uint8_t handle(uint8_t cmd, const uint8_t *p, uint32_t n,
                uint8_t *out, uint32_t max, uint32_t &out_len,
                uint8_t *scratch, uint32_t scratch_size)
@@ -470,6 +488,10 @@ uint8_t handle(uint8_t cmd, const uint8_t *p, uint32_t n,
         case 0x89: st = cmd_volumes(); break;
         case 0x8a: st = cmd_connect(p, n, true); break;
         case 0x8b: st = cmd_connect(p, n, false); break;
+
+        // The matrix unit; $91 is the same, its response sent in a burst
+        case 0x90:
+        case 0x91: st = cmd_npu(p, n); break;
 
         default:
             st = fail(ST_CLIENT, "Undefined command");

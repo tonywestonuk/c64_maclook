@@ -28,6 +28,13 @@ void delay(uint32_t ms)
 }
 
 WiFiClass WiFi;
+EspClass ESP;
+
+uint32_t EspClass::getCycleCount()
+{
+    return (uint32_t)(std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::steady_clock::now() - t0).count() * 240 / 1000);
+}
 LittleFSClass LittleFS;
 
 struct FileImpl {
