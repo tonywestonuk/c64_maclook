@@ -33,6 +33,6 @@
 !source "src/startup.asm"
 !source "build/icons_ovl.asm"
 
-!if * > $5000 {
-        !error "Interface.ovl does not fit its region ($4000-$4fff)"
+!if * > app_spare {
+        !error "Interface.ovl must end below app_spare: applications use the rest"
 }

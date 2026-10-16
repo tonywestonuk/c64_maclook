@@ -579,6 +579,20 @@ read_keyboard:
 +       lda joy1
         eor #$ff
         sta joy1_ignore
+        lda ms_btn              ; the 1351's buttons hold port 1's fire (left)
+        lsr                     ; and up (right) lines: not keys either
+        bcc +
+        lda #$10
+        ora joy1_ignore
+        sta joy1_ignore
+        lda ms_btn
+        lsr
++       lsr
+        bcc +
+        lda #$01
+        ora joy1_ignore
+        sta joy1_ignore
++
         ldx #7
 -       lda col_sel,x
         sta $dc00
@@ -867,14 +881,19 @@ new_press:
         sec
         rts
 
-; wait_click_or_key: for "click to continue" boxes
+; wait_click_or_key: for "click to continue" boxes; A = the key, or 0
+; for a click
 wait_click_or_key:
         jsr wait_release
 -       jsr get_key
         bne +
         jsr new_press
         bcc -
-+       jmp wait_release
+        lda #0
++       pha
+        jsr wait_release
+        pla
+        rts
 
 ; ---------------------------------------------------------------------
 ; Beep (the classic "Simple Beep"): square wave, short envelope

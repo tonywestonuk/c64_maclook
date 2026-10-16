@@ -78,7 +78,7 @@ JT_SLOTS   = 128
         jmp wait_frame          ; wait for the next frame
         jmp wait_frames         ; A = frames
         jmp wait_release        ; wait until the mouse button is up
-        jmp wait_click_or_key   ; wait for a click or a key
+        jmp wait_click_or_key   ; wait for a click or a key: A = the key (0: a click)
         jmp key_pending         ; A = 0 (Z set) if no key is waiting
         jmp beep                ; the System beep
         jmp random              ; A = random byte

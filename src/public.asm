@@ -34,6 +34,25 @@ sys_pram:   !fill 16
 clip_len:   !byte 0
 clip_buf = $0500
 
+; --- a document for the application being started ---------------------
+; The Finder puts the path of a document opened with an application
+; here ("0:Folder/Name.bas", 0 = none); the application takes it.
+app_doc = $0700
+
+; --- BASIC's zero page ------------------------------------------------
+; The System's zero page and BASIC's overlap: this is BASIC's ($02-$ff)
+; while the System's is in use (fp_begin swaps them)
+basic_zp = $0400
+
+; --- spare memory for applications ------------------------------------
+; The Interface overlay ($4000) stays below app_spare: the rest of its
+; region is free for an application's data (768 bytes, not loaded with
+; it).  An application that never calls the Shapes overlay's routines
+; (plot, lines, ovals ...) may also use their region, $5000-$5fff (the
+; System forgets the overlay when an application loads), and the oval
+; table at $c700-$c7ff.
+app_spare = $4d00
+
 ; --- utoa's result -------------------------------------------------
 numbuf:     !fill 8
 

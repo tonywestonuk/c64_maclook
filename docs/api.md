@@ -112,7 +112,7 @@ A, X, Y and the zero page registers below.
 | `$08b5` | `wait_frame` | wait for the next frame |
 | `$08b8` | `wait_frames` | A = frames |
 | `$08bb` | `wait_release` | wait until the mouse button is up |
-| `$08be` | `wait_click_or_key` | wait for a click or a key |
+| `$08be` | `wait_click_or_key` | wait for a click or a key: A = the key (0: a click) |
 | `$08c1` | `key_pending` | A = 0 (Z set) if no key is waiting |
 | `$08c4` | `beep` | the System beep |
 | `$08c7` | `random` | A = random byte |

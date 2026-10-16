@@ -464,7 +464,7 @@ kind_hi: !byte >str_k_disk, >str_k_share, >str_k_trash, >str_k_folder, >str_k_ap
 ; ---------------------------------------------------------------------
 ; Text windows: a text document (data 0) and the Clipboard (data 1)
 ; ---------------------------------------------------------------------
-TEXTMAX = 540
+TEXTMAX = 470
 !zone text_open
 ; text_open: X = a text document: read it, show it (one such window)
 text_open:

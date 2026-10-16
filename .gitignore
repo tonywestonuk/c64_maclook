@@ -31,3 +31,4 @@ frodo4/docs/Makefile.in
 frodo4/docs/*.info
 frodo4/docs/stamp-vti
 frodo4/docs/version.texi
+__pycache__/

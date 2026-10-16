@@ -14,7 +14,10 @@ from the flash, about 100 times faster than a 1541. The WiC64 is also a
 coprocessor: its **matrix unit** ([docs/npu.md](docs/npu.md)) keeps matrices
 and scripts on the ESP32, does the arithmetic, and can even draw, sending back
 only the bytes of the screen that changed, in a burst the C64 writes straight
-into its bitmap.
+into its bitmap. And there's **BASIC** ([docs/basic.md](docs/basic.md)): the
+C64's own BASIC V2 in a QuickBASIC-style editor, with drawing statements and
+`NPU` statements for the matrix unit, so a BASIC program can tumble a solid
+at 50 frames a second.
 
 Like the Mac's Toolbox, the System is used only through a published API: a
 jump table at a fixed address ([docs/api.md](docs/api.md)), so applications
@@ -29,6 +32,7 @@ Commodore theme: a C= logo in place of the Apple, a happy C64 at start-up.
 | ![Menus](docs/screenshots/menu.png) | ![Scroll bars](docs/screenshots/scrolling.png) |
 | ![Brickles](docs/screenshots/brickles.png) | ![Spreadsheet](docs/screenshots/spreadsheet.png) |
 | ![Shapes](docs/screenshots/shapes.png) | ![Polyhedron](docs/screenshots/polyhedron.png) |
+| ![BASIC](docs/screenshots/basic.png) | ![Polyhedron in BASIC](docs/screenshots/basic_run.png) |
 
 ## What's in it
 
@@ -61,6 +65,15 @@ Commodore theme: a C= logo in place of the Apple, a happy C64 at start-up.
   sends back the changes, straight into the screen. The C64 draws nothing:
   27 frames a second for the soccer ball in the emulator. The solids are made
   by `tools/solids.py`.
+- **BASIC**: Commodore BASIC V2, run by the C64's BASIC ROM a slice at a
+  time, so the menus and windows keep working while a program runs. The
+  program is typed in a Listing window, where line numbers are optional and
+  keywords show in bold, and it runs in an Output window. There are drawing
+  statements (`CLS`, `PSET`, `LINE`, `CIRCLE`, `BEEP`), and `NPU` statements
+  that load BASIC arrays into the matrix unit, define scripts and draw with
+  them. Programs are saved as plain text (`.bas`). `Polyhedron.bas` is the
+  Polyhedron application in about 60 lines of BASIC, plus the solids as
+  `DATA`.
 - **Spreadsheet**: a small spreadsheet with formulas (`+ - * / ( )`, cell
   references, `SUM AVG MIN MAX COUNT` over ranges), automatic recalculation,
   number formats, and Cut/Copy/Paste through the shared Clipboard.
@@ -98,7 +111,9 @@ shares are separated by `;`).
   unexpected places: `=` is PageDown, `*` is `]`, `:` is `;`, `+` is `-`,
   and `-` is `=`.
 - Double-click **Brickles**, **Spreadsheet**, **Shapes** or **Polyhedron** in
-  the System Disk window to launch them. Quit brings the Finder back.
+  the System Disk window to launch them, or **BASIC** in the BASIC folder.
+  Double-clicking a `.bas` document opens it in BASIC. Quit brings the
+  Finder back.
 
 ### On a real C64
 
@@ -120,7 +135,9 @@ block 0-1  $0000-$3fff  zero page, stack, BASIC's zero page copy ($0400), the
 block 2    $4000-$5fff  the System's overlays, loaded when first needed:
                         Interface ($4000: alerts, dialogs, moving and sizing
                         windows, start-up and shut-down) and Shapes ($5000:
-                        lines, ovals, circles, round rects)
+                        lines, ovals, circles, round rects); $4d00-$4fff is
+                        spare for applications, and one that never calls
+                        Shapes may use $5000-$5fff too (BASIC starts there)
 block 3    $6000-$7fff  the running application's core
 block 4    $8000-$9fff  the application's page block
 block 5    $a000-$bfff  QuickDraw's buffers: text/icon strips, shift tables
@@ -141,12 +158,14 @@ System Folder/System.sys      the System's core
 System Folder/Interface.ovl   overlay 1
 System Folder/Shapes.ovl      overlay 2
 System Folder/Finder.sys      the Finder
-Brickles.app, Spreadsheet.app, Shapes.app, Read Me.txt
+BASIC/BASIC.app               BASIC
+Brickles.app, Spreadsheet.app, Shapes.app, Polyhedron.app,
+Polyhedron.bas, Read Me.txt
 ```
 
 Paths start with a volume number (`1:Documents/Notes.txt`; none means the
 flash). The Finder hides the extensions it knows (`.app`, `.txt`, `.sys`,
-`.ovl`, `.sheet`), keeps each folder's icon positions in a hidden `.finder`
+`.ovl`, `.sheet`, `.bas`), keeps each folder's icon positions in a hidden `.finder`
 file, and the Trash in a hidden `.Trash` folder on each volume.
 
 The WiC64 speaks its usual transfer protocol; the file service adds a few
@@ -184,7 +203,9 @@ click, key, quit, plus pointers to its window classes, its menus and its
 | `src/fp.asm` | BASIC ROM floating point bridge |
 | `src/da_*.asm` | desk accessories (not built for now) |
 | `src/finder*.asm` | the Finder |
-| `src/brickles*.asm`, `src/sheet*.asm`, `src/shapes_main.asm` | the applications |
+| `src/brickles*.asm`, `src/sheet*.asm`, `src/shapes_main.asm`, `src/polyhedron_main.asm` | the applications |
+| `src/basic_*.asm` | BASIC ([docs/basic.md](docs/basic.md)) |
+| `tools/solids.py`, `tools/polyhedron_bas.py` | the solids, for Polyhedron and `Polyhedron.bas` |
 | `tools/fonts.py`, `tools/icons.py` | fonts, icons and cursors drawn as ASCII art |
 | `tools/mkapi.py` | publishes the API: `build/sysapi.asm`, `docs/api.md` |
 | `tools/mkovl.py` | the overlays' stubs and symbol files |
@@ -209,7 +230,8 @@ click, key, quit, plus pointers to its window classes, its menus and its
   of the host.
 - **Test-bench scripting** (`TestInput=script.txt` with `TestBench=true`): a
   frame-by-frame script of `mouse x y`, `down`/`up`, `keydown`/`keyup`
-  (SDL key names or raw scancode numbers), `type text`, `shot file.bmp`,
+  (SDL key names or raw scancode numbers), `type text` (letters, digits and
+  punctuation, pressed at their C64 key positions), `shot file.bmp`,
   `dump file.bin` (64K RAM and CPU registers) and `quit`.
 
 ## Testing
@@ -231,7 +253,10 @@ range. The WiC64 firmware has its own test bench, on the host
 - The Finder uses all of blocks 3 and 4; it needs the paging planned for
   applications before it can grow. Applications show a generic icon (their
   own icons, read from the application files, are to come).
-- Documents can't be saved yet.
+- Only BASIC saves its documents so far; the Spreadsheet's and text
+  documents can't be saved yet.
+- BASIC's line numbers go from 0 to 999, and long lines are cut off at the
+  Listing's edge (see [docs/basic.md](docs/basic.md#limits)).
 - The WiC64 firmware hasn't been tried on a real WiC64 yet.
 - View by Name/Date/Size/Kind, Print and Erase Disk are not implemented.
 

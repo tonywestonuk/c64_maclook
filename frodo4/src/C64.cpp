@@ -1108,6 +1108,20 @@ void C64::load_test_script()
 				} else if (c == ')') {
 					name = "9";
 					shift = true;
+				} else if (c == ';') {
+					name = "'";
+				} else if (c == '@') {
+					name = "[";
+				} else if (c == '^') {
+					name = "\\";
+				} else if (c == '_') {
+					name = "`";
+				} else if (strchr("!\"#$%&'", c)) {	// shifted digits 1-7
+					name = std::string(1, (char)('1' + (strchr("!\"#$%&'", c) - "!\"#$%&'")));
+					shift = true;
+				} else if (c == '<' || c == '>' || c == '?' || c == '[' || c == ']') {
+					name = c == '<' ? "," : c == '>' ? "." : c == '?' ? "/" : c == '[' ? ";" : "'";
+					shift = true;
 				} else {
 					continue;
 				}

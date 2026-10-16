@@ -50,7 +50,9 @@ load_app:
         sta app_loaded
         lda #CUR_WATCH
         jsr set_cursor
-.try:   lda #<app_name
+.try:   lda #0                  ; (a big application may load over the
+        sta ovl_resident+1      ; Shapes overlay's region: it reloads)
+        lda #<app_name
         sta q0
         lda #>app_name
         sta q0+1

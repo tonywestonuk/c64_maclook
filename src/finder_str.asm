@@ -99,6 +99,7 @@ str_noeject:  !text "The startup disk can", $27, "t be ejected.", 0
 str_sysfile:  !text "That file is used by the system, and can", $27, "t be opened.", 0
 str_noapp:    !text "No application can open this document.", 0
 str_toolong:  !text "That path is too long.", 0
+str_basic:    !text "0:BASIC/BASIC.app", 0
 str_nocopyfolder: !text "Folders can", $27, "t be copied to another disk.", 0
 str_e_notfound: !text "That item could not be found.", 0
 str_e_exists:   !text "That name is already taken.", 0

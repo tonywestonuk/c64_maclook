@@ -27,6 +27,7 @@ T_APP    = 4            ; .app
 T_DOC    = 5            ; other files
 T_TEXT   = 6            ; .txt
 T_SYS    = 7            ; .sys, .ovl: parts of the System
+T_BAS    = 8            ; .bas: a BASIC program
 
 IC_DISK = 0
 IC_SHARE = 1
@@ -53,12 +54,13 @@ icon_table:
         !word icon_doc, icon_system, icon_app
 type_icon:              ; the icon of each kind
         !byte IC_DISK, IC_SHARE, IC_TRASH, IC_FOLDER, IC_APP, IC_DOC, IC_DOC, IC_SYSTEM
+        !byte IC_DOC
 
 ; file kinds by extension (the Finder hides these extensions)
 ext_names:
-        !text "app", 0, "sys", 0, "ovl", 0, "txt", 0, "sheet", 0, 0
+        !text "app", 0, "sys", 0, "ovl", 0, "txt", 0, "sheet", 0, "bas", 0, 0
 ext_types:
-        !byte T_APP, T_SYS, T_SYS, T_TEXT, T_DOC
+        !byte T_APP, T_SYS, T_SYS, T_TEXT, T_DOC, T_BAS
 
 OF_SEL = 1
 OF_HILITE = 2
@@ -3636,6 +3638,9 @@ open_obj:
         cmp #T_TEXT
         bne +
         jmp text_open
++       cmp #T_BAS
+        bne +
+        jmp open_bas
 +       cmp #T_SYS
         bne +
         lda #<str_sysfile
@@ -3645,15 +3650,35 @@ open_obj:
         ldy #>str_noapp
         jmp alert_note
 
+; open_bas: X = a BASIC program: BASIC, with the program's path
+open_bas:
+        jsr obj_path
+        bcs launch_obj          ; (too long: launch_obj says so)
+        ldy #0
+-       lda path_a,y
+        sta app_doc,y
+        beq +
+        iny
+        bne -
++       ldy #0
+-       lda str_basic,y
+        sta path_a,y
+        beq launch_doc
+        iny
+        bne -
+
 ; launch_obj: X = an application: the System replaces the Finder with it
 !zone launch_obj
 launch_obj:
+        lda #0                  ; (no document for it)
+        sta app_doc
         jsr obj_path
-        bcc +
+        bcc launch_doc
         lda #<str_toolong
         ldy #>str_toolong
         jmp alert_stop
-+       jsr zoom_from_obj
+launch_doc:
+        jsr zoom_from_obj
         lda zr_on               ; zoom from the icon to the whole screen
         beq +
         +rect 0, DESK_Y1, 319, 199
